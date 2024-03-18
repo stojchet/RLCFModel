@@ -1,0 +1,2 @@
+transformers @ git+https://github.com/huggingface/transformers
+torch==2.2.1
