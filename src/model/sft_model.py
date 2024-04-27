@@ -9,6 +9,8 @@ from transformers import AutoTokenizer, TrainingArguments
 from peft import LoraConfig
 from contextlib import nullcontext
 
+from src.model.util import get_small_dataset
+
 parser = argparse.ArgumentParser(description="This script fine tunes a model with SFT.")
 parser.add_argument(
     "--per_device_train_batch_size",
@@ -60,24 +62,19 @@ parser.add_argument(
     type=str,
     default="deepseek-ai/deepseek-coder-1.3b-base",
 )
-
-
-def __get_small_dataset(dataset: Dataset, n: int = 100) -> Dataset:
-    dataset = dataset.take(n)
-
-    def gen_from_iterable_dataset(iterable_ds):
-        yield from iterable_ds
-
-    dataset = Dataset.from_generator(partial(gen_from_iterable_dataset, dataset), features=dataset.features)
-    return dataset
+parser.add_argument(
+    "--dataset_ref_field",
+    type=str,
+    default="whole_func_string",
+)
 
 
 def get_dataset(dataset_size: int, hf_dataset_path: str) -> Tuple[Dataset, Dataset]:
     dataset_train = load_dataset(hf_dataset_path, split="train", streaming=True if dataset_size != np.inf else False)
     dataset_dev = load_dataset(hf_dataset_path, split="validation", streaming=True if dataset_size != np.inf else False)
     if dataset_size != np.inf:
-        dataset_train = __get_small_dataset(dataset_train, dataset_size)
-        dataset_dev = __get_small_dataset(dataset_dev, dataset_size)
+        dataset_train = get_small_dataset(dataset_train, dataset_size)
+        dataset_dev = get_small_dataset(dataset_dev, dataset_size)
     return dataset_train, dataset_dev
 
 
@@ -101,7 +98,7 @@ def get_trainer(args: argparse.Namespace):
             args.base_model,
             train_dataset=dataset_train,
             eval_dataset=dataset_dev,
-            dataset_text_field="whole_func_string",
+            dataset_text_field=args.dataset_ref_field,
             max_seq_length=args.max_seq_length,
             dataset_batch_size=16,
             args=training_args,
