@@ -1,5 +1,6 @@
 import argparse
 from functools import partial
+from typing import Tuple
 
 import numpy as np
 from datasets import load_dataset, Dataset
@@ -8,7 +9,7 @@ from transformers import AutoTokenizer, TrainingArguments
 from peft import LoraConfig
 from contextlib import nullcontext
 
-parser = argparse.ArgumentParser(description="This script uploads a dataset to HuggingFace Hub.")
+parser = argparse.ArgumentParser(description="This script fine tunes a model with SFT.")
 parser.add_argument(
     "--per_device_train_batch_size",
     type=int,
@@ -49,6 +50,17 @@ parser.add_argument(
     type=int,
     default=np.inf,
 )
+parser.add_argument(
+    "--dataset_name",
+    type=str,
+    default="code_search_net",
+)
+parser.add_argument(
+    "--base_model",
+    type=str,
+    default="deepseek-ai/deepseek-coder-1.3b-base",
+)
+
 
 def __get_small_dataset(dataset: Dataset, n: int = 100) -> Dataset:
     dataset = dataset.take(n)
@@ -60,7 +72,7 @@ def __get_small_dataset(dataset: Dataset, n: int = 100) -> Dataset:
     return dataset
 
 
-def get_dataset(dataset_size: int, hf_dataset_path='code_search_net'):
+def get_dataset(dataset_size: int, hf_dataset_path: str) -> Tuple[Dataset, Dataset]:
     dataset_train = load_dataset(hf_dataset_path, split="train", streaming=True if dataset_size != np.inf else False)
     dataset_dev = load_dataset(hf_dataset_path, split="validation", streaming=True if dataset_size != np.inf else False)
     if dataset_size != np.inf:
@@ -70,10 +82,9 @@ def get_dataset(dataset_size: int, hf_dataset_path='code_search_net'):
 
 
 def get_trainer(args: argparse.Namespace):
-    dataset_train, dataset_dev = get_dataset(args.dataset_size)
+    dataset_train, dataset_dev = get_dataset(args.dataset_size, args.dataset_name)
 
-    tokenizer = AutoTokenizer.from_pretrained("deepseek-ai/deepseek-coder-1.3b-base", trust_remote_code=True,
-                                              use_fast=True)
+    tokenizer = AutoTokenizer.from_pretrained(args.base_model, trust_remote_code=True, use_fast=True)
 
     training_args = TrainingArguments("out", per_device_train_batch_size=args.per_device_train_batch_size,
                                       push_to_hub=True,
@@ -87,7 +98,7 @@ def get_trainer(args: argparse.Namespace):
     init_context = nullcontext()
     with init_context:
         trainer = SFTTrainer(
-            "deepseek-ai/deepseek-coder-1.3b-base",
+            args.base_model,
             train_dataset=dataset_train,
             eval_dataset=dataset_dev,
             dataset_text_field="whole_func_string",
