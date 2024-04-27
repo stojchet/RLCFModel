@@ -1,9 +1,9 @@
 from functools import partial
 
-from datasets import Dataset
+from datasets import Dataset, IterableDataset
 
 
-def get_small_dataset(dataset: Dataset, n: int = 100) -> Dataset:
+def get_small_dataset(dataset: IterableDataset, n: int = 100) -> Dataset:
     dataset = dataset.take(n)
 
     def gen_from_iterable_dataset(iterable_ds):
