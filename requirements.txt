@@ -1,3 +1,15 @@
 transformers @ git+https://github.com/huggingface/transformers
-torch==2.2.1
-evalplus==0.2.0
+torch~=2.2.2
+evalplus~=0.2.0
+datasets>=2.18.0
+torchvision~=0.17.2
+trl~=0.8.6
+peft~=0.10.0
+python-dotenv~=1.0.1
+scipy~=1.11.4
+bitsandbytes~=0.43.1
+einops~=0.7.0
+evalplus~=0.2.1
+datasets~=2.19.0
+sentencepiece~=0.1.99
+accelerate @ git+https://github.com/huggingface/accelerate.git
