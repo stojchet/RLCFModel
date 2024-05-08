@@ -7,7 +7,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 class Model:
     def __init__(self,
                  name: str,
-                 torch_dtype: torch.dtype,
+                 torch_dtype: torch.dtype = torch.float32,
                  max_new_tokens: int = 2000,
                  padding: Union[bool, str] = False,
                  truncation: Union[bool, str] = False) -> None:
