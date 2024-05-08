@@ -1,7 +1,7 @@
 import argparse
 
 import torch
-from datasets import load_dataset
+from datasets import load_dataset, tqdm
 from torch import nn, optim
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer, AutoModel, pipeline
@@ -23,7 +23,7 @@ parser.add_argument(
 parser.add_argument(
     "--batch_size",
     type=int,
-    default=1,
+    default=3,
 )
 parser.add_argument(
     "--hidden_size",
@@ -74,24 +74,26 @@ class Discriminator(nn.Module):
         self.code_bert = CodeBert()
 
     def forward(self, inputs):
-        x, y_0, y_1 = inputs["func_documentation_string"], inputs["func_code_string"], inputs["prediction"]
-
-        x_y0 = [x_part + y0_part for x_part, y0_part in zip(x, y_0)]
-        x_y1 = [x_part + y1_part for x_part, y1_part in zip(x, y_1)]
-
-        x_y0_enc = torch.tensor([self.code_bert.get_sentence_embedding(part) for part in x_y0])
-        x_y1_enc = torch.tensor([self.code_bert.get_sentence_embedding(part) for part in x_y1])
-
-        output_y0 = self.mlp(x_y0_enc)
-        output_y1 = self.mlp(x_y1_enc)
+        output_y0 = self.mlp(inputs[:, 0])
+        output_y1 = self.mlp(inputs[:, 1])
 
         return torch.tanh(output_y0 - output_y1)
 
+    # model state dict
     def save(self, path: str):
         torch.save(self.state_dict(), path)
 
-    def load(self, path: str):
-        self.load_state_dict(torch.load(path))
+    def load(self, path: str, hidden_size: int) -> 'Discriminator':
+        model = Discriminator(hidden_size)
+        return model.load_state_dict(torch.load(path))
+
+    # whole model
+    def save(self, path: str):
+        torch.save(self, path)
+
+    @staticmethod
+    def load(path: str) -> 'Discriminator':
+        return torch.load(path)
 
 
 def train(model, train_loader, epochs, lr):
@@ -100,7 +102,7 @@ def train(model, train_loader, epochs, lr):
 
     for epoch in range(epochs):
         total_loss = 0.0
-        for inputs in train_loader:
+        for inputs in tqdm(train_loader):
             optimizer.zero_grad()
 
             outputs = model(inputs)
@@ -115,12 +117,31 @@ def train(model, train_loader, epochs, lr):
         print(0, f"Epoch {epoch + 1}, Loss: {total_loss / len(train_loader)}")
 
 
+def collate_fn(batch):
+    code_bert = CodeBert()
+
+
+    features = torch.zeros((len(batch), 2, 768))
+
+    for i, element in enumerate(batch):
+        x, y_0, y_1 = element["func_documentation_string"], element["func_code_string"], element["prediction"]
+
+        x_y0 = x + y_0
+        x_y1 = x + y_1
+
+        x_y0_enc = torch.tensor(code_bert.get_sentence_embedding(x_y0))
+        x_y1_enc = torch.tensor(code_bert.get_sentence_embedding(x_y1))
+
+        features[i, 0] = x_y0_enc
+        features[i, 1] = x_y1_enc
+
+    return features
+
+
 if __name__ == '__main__':
     args = parser.parse_args()
     dataset = load_dataset(args.dataset_name, split="train")
-    train_loader = DataLoader(dataset, batch_size=args.batch_size)
+    train_loader = DataLoader(dataset, collate_fn=collate_fn, batch_size=args.batch_size)
 
     discriminator = Discriminator(args.hidden_size)
     train(discriminator, train_loader, args.epochs, args.optim_lr)
-
-
