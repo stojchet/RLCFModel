@@ -1,3 +1,5 @@
+#!/bin/bash
+
 predictions_file_name="$1"
 model_name="$2"
 path_to_prompt="$3"
@@ -10,9 +12,9 @@ case $language in
     "java")
         dataset="mbjp"
         ;;
-    *)  # Default case
+    *)
         echo "Unknown language"
-        exit 1  # Exit the script if language is unknown
+        exit 1
         ;;
 esac
 
