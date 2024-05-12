@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 from src.model.util import get_small_dataset
 from src.model_impl import Model
 
+
 PREDICTION = "prediction"
 PROMPT = "func_documentation_string"
 LABEL = "func_code_string"
@@ -36,7 +37,7 @@ parser.add_argument(
 parser.add_argument(
     "--hf_ds_out_path",
     type=str,
-    default="stojchet/test",
+    default="stojchet/small_java_csn",
     help="Repo id in HF where the base dataset will be saved"
 )
 parser.add_argument(
@@ -46,7 +47,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--torch_dtype",
-    type=torch.dtype,
+    type=str,
     default=torch.bfloat16,
 )
 parser.add_argument(
@@ -66,10 +67,16 @@ torch.set_default_device("cuda")
 torch.set_float32_matmul_precision('high')
 load_dotenv()
 
+
+def dtype_from_string(dtype_str):
+    dtype = getattr(torch, dtype_str)
+    return dtype
+
+
 def _load_dataset(dataset_name: str, language: str, dataset_size: int) -> Dataset:
     dataset = load_dataset(dataset_name, split="train", trust_remote_code=True)
 
-    if language is not "all":
+    if language != "all":
         dataset = dataset.filter(lambda x: x["language"] == language)
     if dataset_size != np.inf:
         dataset = get_small_dataset(dataset.to_iterable_dataset(), dataset_size)
@@ -100,7 +107,7 @@ def _save_dataset(dataset: Dataset, hf_ds_out_path: str, revision: Optional[str]
 def create_dataset(args: argparse.Namespace) -> None:
     model = Model(name=args.model_name,
                   max_new_tokens=args.max_new_tokens,
-                  torch_dtype=args.torch_dtype,
+                  torch_dtype=dtype_from_string(args.torch_dtype),
                   truncation=True)
     dataset = _load_dataset(dataset_name=args.dataset_name,
                             language=args.language,
