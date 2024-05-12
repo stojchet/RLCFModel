@@ -3,7 +3,7 @@ import argparse
 import torch
 from evalplus.data import get_mbpp_plus, write_jsonl
 
-from model_impl import Model
+from src.model_impl import Model
 
 parser = argparse.ArgumentParser(description="This script evaluates a pre trained model using EvalPlus.")
 parser.add_argument(
