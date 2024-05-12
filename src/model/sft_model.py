@@ -1,5 +1,4 @@
 import argparse
-from functools import partial
 from typing import Tuple
 
 import numpy as np
