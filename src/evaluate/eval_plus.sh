@@ -19,6 +19,6 @@ case $language in
 esac
 
 
-python3 src/evaluate/evalp_collect_predictions.py --dataset_name="$predictions_file_name" --model_name="$model_name" --path_to_prompt="$path_to_prompt"
+python3 src/evaluate/evalp_collect_predictions.py --$predictions_file_name="$predictions_file_name" --model_name="$model_name" --path_to_prompt="$path_to_prompt" --language="$language"
 python3 tools/sanitize.py --samples predictions_file_name --dataset $dataset
 python3 evalplus.evaluate --samples predictions_file_name --dataset $dataset
