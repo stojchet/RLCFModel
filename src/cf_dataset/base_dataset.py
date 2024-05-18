@@ -37,12 +37,12 @@ parser.add_argument(
 parser.add_argument(
     "--language",
     type=str,
-    default="python",
+    required=True,
 )
 parser.add_argument(
     "--hf_ds_out_path",
     type=str,
-    default="stojchet/test",
+    required=True,
     help="Repo id in HF where the base dataset will be saved"
 )
 parser.add_argument(
