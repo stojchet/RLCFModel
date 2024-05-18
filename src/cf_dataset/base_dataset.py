@@ -18,6 +18,11 @@ PREDICTION = "prediction"
 PROMPT = "func_documentation_string"
 LABEL = "func_code_string"
 
+"""
+Example command run:
+python3 base_dataset.py --hf_ds_out_path=test_ds -- language=java
+"""
+
 parser = argparse.ArgumentParser(description="This script fine tunes a model with SFT.")
 parser.add_argument(
     "--model_name",
@@ -32,12 +37,12 @@ parser.add_argument(
 parser.add_argument(
     "--language",
     type=str,
-    default="java",
+    default="python",
 )
 parser.add_argument(
     "--hf_ds_out_path",
     type=str,
-    default="stojchet/small_java_csn",
+    default="stojchet/test",
     help="Repo id in HF where the base dataset will be saved"
 )
 parser.add_argument(
@@ -48,12 +53,12 @@ parser.add_argument(
 parser.add_argument(
     "--torch_dtype",
     type=str,
-    default=torch.bfloat16,
+    default="bfloat16",
 )
 parser.add_argument(
     "--save_intermediate",
     type=bool,
-    default=False,
+    default=True,
     help="If true, saves the dataset at every new 100 datapoints, under revision i/100."
 )
 parser.add_argument(
@@ -84,7 +89,7 @@ def _load_dataset(dataset_name: str, language: str, dataset_size: int) -> Datase
     return dataset
 
 
-def _collect_predictions(dataset: Dataset, model: Model, save_intermediate: bool, dataset_name: str) -> Dataset:
+def _collect_predictions(dataset: Dataset, model: Model, save_intermediate: bool, hf_ds_out_path: str) -> Dataset:
     final_dataset = []
     for i, datapoint in tqdm(enumerate(dataset)):
         datapoint[PREDICTION] = model.predict(datapoint[PROMPT])
@@ -92,16 +97,21 @@ def _collect_predictions(dataset: Dataset, model: Model, save_intermediate: bool
         gc.collect()
         final_dataset.append(datapoint)
 
-        if save_intermediate and i > 0 and i % 100 == 0:
+        if save_intermediate and (i + 1) % 1000 == 0:
             ds = Dataset.from_list(final_dataset)
-            _save_dataset(ds, dataset_name, str(float(i / 100)))
-            print(i)
+            _save_dataset(ds, hf_ds_out_path, str(float((i + 1) / 2)))
+            print(i + 1)
 
     return Dataset.from_list(final_dataset)
 
 
-def _save_dataset(dataset: Dataset, hf_ds_out_path: str, revision: Optional[str] = None) -> None:
-    dataset.push_to_hub(hf_ds_out_path, token=os.getenv('HF_WRITE_TOKEN'), revision=revision)
+def _save_dataset(dataset: Dataset, hf_ds_out_path: str, revision: Optional[str] = None, language: Optional[str] = None) -> None:
+    dataset.push_to_hub(
+        hf_ds_out_path,
+        token=os.getenv('HF_WRITE_TOKEN'),
+        revision=revision,
+        config_name=language if language else "default"
+    )
 
 
 def create_dataset(args: argparse.Namespace) -> None:
@@ -112,8 +122,9 @@ def create_dataset(args: argparse.Namespace) -> None:
     dataset = _load_dataset(dataset_name=args.dataset_name,
                             language=args.language,
                             dataset_size=args.dataset_size)
-    predictions = _collect_predictions(dataset, model, args.save_intermediate, args.dataset_name)
-    _save_dataset(predictions, args.hf_ds_out_path)
+    predictions = _collect_predictions(dataset, model, args.save_intermediate, args.hf_ds_out_path + "_" + args.language)
+    _save_dataset(predictions, args.hf_ds_out_path, revision="main", language=args.language)
+
 
 
 if __name__ == "__main__":
