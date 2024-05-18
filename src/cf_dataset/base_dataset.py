@@ -126,8 +126,6 @@ def create_dataset(args: argparse.Namespace) -> None:
     _save_dataset(predictions, args.hf_ds_out_path, revision="main", language=args.language)
 
 
-
 if __name__ == "__main__":
     args = parser.parse_args()
     create_dataset(args)
-
