@@ -2,6 +2,7 @@ import argparse
 
 import torch
 from evalplus.data import get_mbpp_plus, write_jsonl
+from tqdm import tqdm
 
 from src.model_impl import Model
 
@@ -36,6 +37,8 @@ parser.add_argument(
 )
 
 
+torch.set_default_device('cuda')
+
 def dtype_from_string(dtype_str):
     dtype = getattr(torch, dtype_str)
     return dtype
@@ -51,9 +54,10 @@ def get_prompt_from_file(path_to_prompt: str):
 
 
 def get_predictions(model: Model, prompt: str):
+    print("start")
     return [
         dict(task_id=task_id, solution=model.predict(prompt + problem["prompt"]))
-        for task_id, problem in list(get_mbpp_plus().items())
+        for task_id, problem in tqdm(list(get_mbpp_plus().items()))
     ]
 
 
