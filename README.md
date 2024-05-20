@@ -6,3 +6,21 @@ The goal of the coarse tuning is to align the model's output with compilable cod
 ### Requirements
 * Python >3.9
 * To install all requirements run: `pip install requirements.txt`
+
+#### Tokens
+Create a .env file and add your `HF_WRITE_TOKEN`.
+
+## Train model
+
+### Run SFT
+Run the script `src/model/sft_model.py`. 
+
+### Run DPO
+#### Collect Dataset
+1. Collect base dataset by running `src/cf_dataset/base_dataset.py`
+2. Train discriminator using hte above dataset by running `src/cf_dataset/discriminator.py`
+3. Collect final preference enriched dataset `src/cf_dataset/disc_preference_dataset.py`
+4. Train the model with DPO by running `src/model/dpo_model.py`
+    
+## Evaluate pre-trained model
+Run `src/evaluate/eval_plus.sh`. Evaluates model on MBPP or HumanEval using EvalPlus
