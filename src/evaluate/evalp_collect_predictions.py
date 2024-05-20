@@ -54,7 +54,6 @@ def get_prompt_from_file(path_to_prompt: str):
 
 
 def get_predictions(model: Model, prompt: str):
-    print("start")
     return [
         dict(task_id=task_id, solution=model.predict(prompt + problem["prompt"]))
         for task_id, problem in tqdm(list(get_mbpp_plus().items()))

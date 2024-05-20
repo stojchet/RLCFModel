@@ -24,7 +24,6 @@ class Model:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
     def predict(self, prompt: str) -> str:
-        print("predicting")
         inputs = self.tokenizer(prompt, return_tensors="pt", return_attention_mask=False, truncation=self.truncation, padding=self.padding)
 
         outputs = self.model.generate(**inputs,
@@ -32,7 +31,6 @@ class Model:
                                       do_sample=True,
                                       pad_token_id=self.tokenizer.pad_token_id
                                       )
-        print("pred generated")
         result = self.tokenizer.batch_decode(outputs)[0][len(prompt):]
 
         torch.cuda.empty_cache()
