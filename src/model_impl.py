@@ -31,7 +31,7 @@ class Model:
                                       do_sample=True,
                                       pad_token_id=self.tokenizer.pad_token_id
                                       )
-        result = self.tokenizer.batch_decode(outputs)[0][len(prompt):]
+        result = self.tokenizer.batch_decode(outputs)[0]
 
         torch.cuda.empty_cache()
         gc.collect()
