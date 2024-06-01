@@ -9,7 +9,8 @@ from transformers import AutoTokenizer, AutoModel
 torch.set_default_device("cuda")
 torch.set_float32_matmul_precision('medium')
 
-parser = argparse.ArgumentParser(description="This script fine tunes a model with SFT.")
+parser = argparse.ArgumentParser(description="This script train a discriminator that "
+                                             "will distinguish human from machine generated code.")
 parser.add_argument(
     "--dataset_name",
     type=str,
@@ -23,7 +24,7 @@ parser.add_argument(
 parser.add_argument(
     "--batch_size",
     type=int,
-    default=3,
+    default=4,
 )
 parser.add_argument(
     "--hidden_size",
@@ -47,7 +48,6 @@ class CodeBert:
         special_tokens_dict = {"cls_token": "<CLS>", 'pad_token': '[PAD]', }
         self.tokenizer.add_special_tokens(special_tokens_dict)
         self.model.resize_token_embeddings(len(self.tokenizer))
-
 
     def get_sentence_embedding(self, sentence: str) -> torch.Tensor:
         encoded = self.tokenizer.encode(sentence)
@@ -169,8 +169,8 @@ def collate_fn(batch):
 if __name__ == '__main__':
     args = parser.parse_args()
     dataset = load_dataset(args.dataset_name, split="train")
+
     train_loader = DataLoader(dataset, collate_fn=collate_fn, batch_size=args.batch_size)
 
     discriminator = Discriminator(args.hidden_size)
     train(discriminator, train_loader, args.epochs, args.optim_lr)
-
