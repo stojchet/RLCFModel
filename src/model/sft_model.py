@@ -10,6 +10,12 @@ from contextlib import nullcontext
 
 from src.model.util import get_small_dataset
 
+"""
+Run:
+python src/model/sft_model.py --max_seq_length 512 --model_name_or_path deepseek-ai/deepseek-coder-1.3b-base
+--dataset_size 10000 
+"""
+
 parser = argparse.ArgumentParser(description="This script fine tunes a model with SFT.")
 parser.add_argument(
     "--per_device_train_batch_size",
@@ -62,6 +68,11 @@ parser.add_argument(
     default="deepseek-ai/deepseek-coder-1.3b-base",
 )
 parser.add_argument(
+    "--out_model",
+    type=str,
+    required=True,
+)
+parser.add_argument(
     "--dataset_ref_field",
     type=str,
     default="whole_func_string",
@@ -82,7 +93,7 @@ def get_trainer(args: argparse.Namespace):
 
     tokenizer = AutoTokenizer.from_pretrained(args.base_model, trust_remote_code=True, use_fast=True)
 
-    training_args = TrainingArguments("out", per_device_train_batch_size=args.per_device_train_batch_size,
+    training_args = TrainingArguments(args.out_model, per_device_train_batch_size=args.per_device_train_batch_size,
                                       push_to_hub=True,
                                       gradient_accumulation_steps=args.gradient_accumulation_steps,
                                       learning_rate=args.learning_rate,
@@ -121,3 +132,4 @@ if __name__ == "__main__":
 
     trainer = get_trainer(args)
     trainer.train()
+    trainer.push_to_hub()
