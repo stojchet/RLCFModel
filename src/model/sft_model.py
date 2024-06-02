@@ -1,12 +1,17 @@
 import argparse
+import os
+import random
+import sys
 from typing import Tuple
 
 import numpy as np
 from datasets import load_dataset, Dataset
+from dotenv import load_dotenv
 from trl import SFTTrainer
 from transformers import AutoTokenizer, TrainingArguments
 from peft import LoraConfig
 from contextlib import nullcontext
+from huggingface_hub.hf_api import HfFolder
 
 from src.model.util import get_small_dataset
 
@@ -60,7 +65,12 @@ parser.add_argument(
 parser.add_argument(
     "--dataset_name",
     type=str,
-    default="code_search_net",
+    default="stojchet/csn_filtered_subset",
+)
+parser.add_argument(
+    "--language",
+    type=str,
+    required=True,
 )
 parser.add_argument(
     "--base_model",
@@ -79,17 +89,17 @@ parser.add_argument(
 )
 
 
-def get_dataset(dataset_size: int, hf_dataset_path: str) -> Tuple[Dataset, Dataset]:
-    dataset_train = load_dataset(hf_dataset_path, split="train", streaming=True if dataset_size != np.inf else False)
-    dataset_dev = load_dataset(hf_dataset_path, split="validation", streaming=True if dataset_size != np.inf else False)
+def get_dataset(dataset_size: int, hf_dataset_path: str, language: str) -> Tuple[Dataset, Dataset]:
+    dataset_train = load_dataset(hf_dataset_path, split="train", name=language).shuffle(random.randint(1, sys.maxsize))
+    dataset_dev = load_dataset(hf_dataset_path, split="validation", name=language).shuffle(random.randint(1, sys.maxsize))
     if dataset_size != np.inf:
         dataset_train = get_small_dataset(dataset_train, dataset_size)
-        dataset_dev = get_small_dataset(dataset_dev, dataset_size)
+        dataset_dev = get_small_dataset(dataset_dev, 2000)
     return dataset_train, dataset_dev
 
 
 def get_trainer(args: argparse.Namespace):
-    dataset_train, dataset_dev = get_dataset(args.dataset_size, args.dataset_name)
+    dataset_train, dataset_dev = get_dataset(args.dataset_size, args.dataset_name, args.language)
 
     tokenizer = AutoTokenizer.from_pretrained(args.base_model, trust_remote_code=True, use_fast=True)
 
@@ -128,6 +138,9 @@ def get_trainer(args: argparse.Namespace):
 
 
 if __name__ == "__main__":
+    load_dotenv()
+
+    HfFolder.save_token(os.getenv('HF_WRITE_TOKEN'))
     args = parser.parse_args()
 
     trainer = get_trainer(args)
