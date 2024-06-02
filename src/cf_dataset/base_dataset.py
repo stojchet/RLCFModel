@@ -13,27 +13,21 @@ from dotenv import load_dotenv
 from src.model.util import get_small_dataset
 from src.model_impl import Model
 
-
 PREDICTION = "prediction"
 PROMPT = "func_documentation_string"
 LABEL = "func_code_string"
 
 """
 Example command run:
-python3 base_dataset.py --hf_ds_out_path=test_ds -- language=java
+python3 base_dataset.py \
+--hf_ds_out_path=test_ds \
+--language=java \
+--dataset_name=stojchet/csn_filtered_subset \
+--prompt=. \
+--torch_dtype=float16
 """
 
 parser = argparse.ArgumentParser(description="This script fine tunes a model with SFT.")
-parser.add_argument(
-    "--model_name",
-    type=str,
-    default="deepseek-ai/deepseek-coder-1.3b-base",
-)
-parser.add_argument(
-    "--dataset_name",
-    type=str,
-    default="code_search_net",
-)
 parser.add_argument(
     "--language",
     type=str,
@@ -44,6 +38,22 @@ parser.add_argument(
     type=str,
     required=True,
     help="Repo id in HF where the base dataset will be saved"
+)
+parser.add_argument(
+    "--prompt_path",
+    type=str,
+    required=True,
+    help="Path to the file containing system prompt"
+)
+parser.add_argument(
+    "--dataset_name",
+    type=str,
+    default="code_search_net",
+)
+parser.add_argument(
+    "--model_name",
+    type=str,
+    default="deepseek-ai/deepseek-coder-1.3b-base",
 )
 parser.add_argument(
     "--max_new_tokens",
@@ -67,7 +77,6 @@ parser.add_argument(
     default=np.inf,
 )
 
-
 torch.set_default_device("cuda")
 torch.set_float32_matmul_precision('high')
 load_dotenv()
@@ -89,10 +98,16 @@ def _load_dataset(dataset_name: str, language: str, dataset_size: int) -> Datase
     return dataset
 
 
-def _collect_predictions(dataset: Dataset, model: Model, save_intermediate: bool, hf_ds_out_path: str) -> Dataset:
+def _collect_predictions(
+        dataset: Dataset,
+        model: Model,
+        save_intermediate: bool,
+        hf_ds_out_path: str,
+        base_prompt: str,
+) -> Dataset:
     final_dataset = []
     for i, datapoint in tqdm(enumerate(dataset)):
-        datapoint[PREDICTION] = model.predict(datapoint[PROMPT])
+        datapoint[PREDICTION] = model.predict(base_prompt + "\n" + datapoint[PROMPT])
         torch.cuda.empty_cache()
         gc.collect()
         final_dataset.append(datapoint)
@@ -105,7 +120,8 @@ def _collect_predictions(dataset: Dataset, model: Model, save_intermediate: bool
     return Dataset.from_list(final_dataset)
 
 
-def _save_dataset(dataset: Dataset, hf_ds_out_path: str, revision: Optional[str] = None, language: Optional[str] = None) -> None:
+def _save_dataset(dataset: Dataset, hf_ds_out_path: str, revision: Optional[str] = None,
+                  language: Optional[str] = None) -> None:
     dataset.push_to_hub(
         hf_ds_out_path,
         token=os.getenv('HF_WRITE_TOKEN'),
@@ -122,7 +138,12 @@ def create_dataset(args: argparse.Namespace) -> None:
     dataset = _load_dataset(dataset_name=args.dataset_name,
                             language=args.language,
                             dataset_size=args.dataset_size)
-    predictions = _collect_predictions(dataset, model, args.save_intermediate, args.hf_ds_out_path + "_" + args.language)
+
+    with open(args.prompt_path) as prompt_file:
+        prompt = prompt_file.read()
+
+    predictions = _collect_predictions(dataset, model, args.save_intermediate,
+                                       args.hf_ds_out_path + "_" + args.language, prompt)
     _save_dataset(predictions, args.hf_ds_out_path, revision="main", language=args.language)
 
 
