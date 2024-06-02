@@ -1,16 +1,23 @@
 import argparse
+from typing import Dict
 
 import torch
 from datasets import load_dataset, tqdm
 from torch import nn, optim
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer, AutoModel
+from huggingface_hub import PyTorchModelHubMixin
 
 torch.set_default_device("cuda")
 torch.set_float32_matmul_precision('medium')
 
 parser = argparse.ArgumentParser(description="This script train a discriminator that "
                                              "will distinguish human from machine generated code.")
+parser.add_argument(
+    "--out_model_name",
+    type=str,
+    required=True,
+)
 parser.add_argument(
     "--dataset_name",
     type=str,
@@ -81,10 +88,10 @@ class MLP(nn.Module):
         return self.layers(batch)
 
 
-class Discriminator(nn.Module):
-    def __init__(self, hidden_size: int) -> None:
+class Discriminator(nn.Module, PyTorchModelHubMixin):
+    def __init__(self, config: Dict[str, str]) -> None:
         super(Discriminator, self).__init__()
-        self.mlp = MLP(embedding_size=MAX_FEATURE_SIZE, hidden_size=hidden_size)
+        self.mlp = MLP(embedding_size=MAX_FEATURE_SIZE, hidden_size=int(config["hidden_size"]))
 
     def forward(self, inputs):
         features, attention_masks = inputs
@@ -110,7 +117,7 @@ class Discriminator(nn.Module):
         return torch.load(path)
 
 
-def train(model, train_loader, epochs, lr):
+def train(model, train_loader, epochs, lr) -> Discriminator:
     optimizer = optim.Adam(model.parameters(), lr=lr)
     criterion = nn.MSELoss()
 
@@ -129,6 +136,8 @@ def train(model, train_loader, epochs, lr):
             total_loss += loss.item()
 
         print(0, f"Epoch {epoch + 1}, Loss: {total_loss / len(train_loader)}")
+
+    return model
 
 
 def collate_fn(batch):
@@ -171,6 +180,9 @@ if __name__ == '__main__':
     dataset = load_dataset(args.dataset_name, split="train")
 
     train_loader = DataLoader(dataset, collate_fn=collate_fn, batch_size=args.batch_size)
+    config = {"hidden_size": args.hidden_size}
 
-    discriminator = Discriminator(args.hidden_size)
-    train(discriminator, train_loader, args.epochs, args.optim_lr)
+    discriminator = Discriminator(config)
+    discriminator = train(discriminator, train_loader, args.epochs, args.optim_lr)
+
+    discriminator.push_to_hub(args.out_model_name, config=config)
