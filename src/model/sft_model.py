@@ -13,7 +13,7 @@ from peft import LoraConfig
 from contextlib import nullcontext
 from huggingface_hub.hf_api import HfFolder
 
-from src.model.util import get_small_dataset
+from util import get_small_dataset
 
 """
 Run:
