@@ -10,7 +10,7 @@ from datasets import Dataset
 import gc
 from dotenv import load_dotenv
 
-from src.model.util import get_small_dataset
+from util import get_small_dataset, dtype_from_string
 from src.model_impl import Model
 
 PREDICTION = "prediction"
@@ -20,7 +20,7 @@ LABEL = "func_code_string"
 """
 Example command run:
 python3 base_dataset.py \
---hf_ds_out_path=test_ds \
+--hf_ds_out_path=base_dataset \
 --language=java \
 --dataset_name=stojchet/csn_filtered_subset \
 --prompt=. \
@@ -80,11 +80,6 @@ parser.add_argument(
 torch.set_default_device("cuda")
 torch.set_float32_matmul_precision('high')
 load_dotenv()
-
-
-def dtype_from_string(dtype_str):
-    dtype = getattr(torch, dtype_str)
-    return dtype
 
 
 def _load_dataset(dataset_name: str, language: str, dataset_size: int) -> Dataset:

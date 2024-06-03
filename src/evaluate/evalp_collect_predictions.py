@@ -5,6 +5,16 @@ from evalplus.data import get_mbpp_plus, write_jsonl
 from tqdm import tqdm
 
 from src.model_impl import Model
+from util import dtype_from_string
+
+"""
+Run:
+python3 src/evaluate/evalp_collect_predictions.py \
+--predictions_file_name=predictions.jsonl \
+--model_name=deepseek-ai/deepseek-coder-6.7b-instruct \
+--language=python \
+--path_to_prompt=../prompts/simple.txt
+"""
 
 parser = argparse.ArgumentParser(description="This script evaluates a pre trained model using EvalPlus.")
 parser.add_argument(
@@ -36,12 +46,7 @@ parser.add_argument(
     help="Path to the prompt that will be used. Prompt is provided in file."
 )
 
-
 torch.set_default_device('cuda')
-
-def dtype_from_string(dtype_str):
-    dtype = getattr(torch, dtype_str)
-    return dtype
 
 
 def get_model(model_name: str, torch_dtype: torch.dtype):
@@ -61,7 +66,7 @@ def get_predictions(model: Model, prompt: str):
 
 
 def run_eval(args: argparse.Namespace):
-    model = get_model(args.model_name, args.torch_dtype)
+    model = get_model(args.model_name, dtype_from_string(args.torch_dtype))
     prompt = get_prompt_from_file(args.path_to_prompt)
     predictions = get_predictions(model, prompt)
     write_jsonl(args.predictions_file_name, predictions)
