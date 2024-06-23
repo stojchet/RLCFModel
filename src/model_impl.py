@@ -1,5 +1,5 @@
 import gc
-from typing import Union
+from typing import Union, List
 
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -23,15 +23,15 @@ class Model:
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
-    def predict(self, prompt: str) -> str:
-        inputs = self.tokenizer(prompt, return_tensors="pt", return_attention_mask=False, truncation=self.truncation, padding=self.padding)
+    def predict(self, prompts: List[str]) -> str:
+        tokenized = self.tokenizer(prompts, return_tensors="pt", return_attention_mask=False, truncation=self.truncation, padding=True)
 
-        outputs = self.model.generate(**inputs,
+        outputs = self.model.generate(tokenized['input_ids'],
                                       max_new_tokens=self.max_new_tokens,
                                       do_sample=True,
-                                      pad_token_id=self.tokenizer.pad_token_id
+                                      pad_token_id=self.tokenizer.pad_token_id,
                                       )
-        result = self.tokenizer.batch_decode(outputs)[0]
+        result = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
 
         torch.cuda.empty_cache()
         gc.collect()

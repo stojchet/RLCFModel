@@ -1,11 +1,13 @@
 import argparse
 import gc
+import json
 import os
-import random
+import tempfile
 import time
 from pathlib import Path
 from typing import List, Dict
 
+import pandas as pd
 import torch
 from datasets import Dataset
 from dotenv import load_dotenv
@@ -41,6 +43,17 @@ parser.add_argument(
     help="Name of the file where predictions will be stored"
 )
 parser.add_argument(
+    "--path_to_prompt",
+    type=str,
+    required=True,
+    help="Path to the prompt that will be used. Prompt is provided in file."
+)
+parser.add_argument(
+    "--batch_size",
+    type=int,
+    default=4,
+)
+parser.add_argument(
     "--model_name",
     type=str,
     required=True,
@@ -54,12 +67,6 @@ parser.add_argument(
     "--framework",
     type=str,
     required=True,
-)
-parser.add_argument(
-    "--path_to_prompt",
-    type=str,
-    required=True,
-    help="Path to the prompt that will be used. Prompt is provided in file."
 )
 parser.add_argument(
     "--torch_dtype",
@@ -102,13 +109,18 @@ def get_mbxp_lang_dataset(lang: str):
 
 def get_predictions_mxeval(model: Model, prompt: str, language: str) -> List[Dict[str, str]]:
     problems = read_problems(get_mbxp_lang_dataset(language))
-    problems = dict(random.sample(problems.items(), 50))
-    num_samples_per_task = 1
+
+    with tempfile.NamedTemporaryFile(mode='w+', delete=False) as temp:
+        temp.write(json.dumps(problems) + '\n')
+
+    dataset = pd.read_json(temp.name).transpose()
+    bathes = [dataset.iloc[i:i + args.batch_size] for i in range(0, len(dataset), args.batch_size)]
+
     start = time.time()
     samples = [
-        generate_single(model, problems, prompt, task_id)
-        for task_id in problems
-        for _ in range(num_samples_per_task)
+        sample
+        for batch in bathes
+        for sample in generate_batch(model, batch, prompt)
     ]
     print(time.time() - start)
     device = next(model.model.parameters()).device
@@ -116,13 +128,14 @@ def get_predictions_mxeval(model: Model, prompt: str, language: str) -> List[Dic
     return samples
 
 
-def generate_single(model, problems, prompt, task_id):
-    return {
-        "task_id": task_id,
-        "language": problems[task_id]["language"],
-        "completion": model.predict(prompt + problems[task_id]["prompt"]),
-        "prompt": problems[task_id]["prompt"],
-    }
+def generate_batch(model, problems_subset, prompt):
+    predictions = model.predict([prompt + task["prompt"] for idx, task in problems_subset.iterrows()])
+    return [{
+        "task_id": idx,
+        "language": val["language"],
+        "completion": predictions[i],
+        "prompt": val["prompt"],
+    } for i, (idx, val) in enumerate(problems_subset.iterrows())]
 
 
 def run_eval(args: argparse.Namespace, get_predictions):
