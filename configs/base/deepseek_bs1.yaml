@@ -1,0 +1,7 @@
+dataset_name: "stojchet/csn_java_python_subset"
+batch_size: 1
+model_name: "deepseek-ai/deepseek-coder-1.3b-base"
+max_new_tokens: 1000
+torch_dtype: "bfloat16"
+save_intermediate: True
+dataset_size: "inf"
