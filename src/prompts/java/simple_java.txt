@@ -1,0 +1,1 @@
+Your task is to create a function based on the given doc string in Python. Write Python code and put the code in back tick block ``` Your code here ```. Just finish the function, do not add any extra text.

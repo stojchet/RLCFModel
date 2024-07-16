@@ -1,0 +1,29 @@
+Your task is to complete code. Don't generate the whole document and don't add any explanations after the code completion .
+For example if your input is:
+```import java.util.Arrays;
+
+public class ArraySum {
+
+    /**
+     * Function to calculate the sum of all elements in an array.
+     * @param arr The input array of integers.
+     * @return The sum of all elements in the array.
+     *
+     * > sumArray([1, 2, 3])
+     * 6
+     * > sumArray([2, 3, 4, 2, 6, 4])
+     * 21
+     */
+    public static int sumArray(int[] arr) {
+```
+You should output:
+```
+        int sum = 0;
+        for (int num : arr) {
+            sum += num;
+        }
+        return sum;
+    }
+}
+```
+It is very important that you do not add any explanations after this output.

@@ -1,0 +1,2 @@
+Implement the following function:
+```python

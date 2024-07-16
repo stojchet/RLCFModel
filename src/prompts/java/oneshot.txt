@@ -1,0 +1,16 @@
+Your task is to complete code. For example if your input is:
+```
+public class Main {
+    /**
+     * Method to calculate the sum of all elements in an array.
+     * @param arr The input array of integers.
+     * @return The sum of all elements in the array.
+     */
+    public static int sumArray(int[] arr) {
+```
+You should output:
+```
+        return Arrays.stream(arr).sum();
+    }
+}
+```

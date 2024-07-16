@@ -1,0 +1,19 @@
+Your task is to complete code. For example if your input is:
+```
+def sum_array(arr):
+    Function to calculate the sum of all elements in an array.
+    :param arr: The input list of integers.
+    :return: The sum of all elements in the list.
+
+    > sum_array([1, 2, 3])
+    6
+    > sum_array([2, 3, 4, 2, 6, 4])
+    21
+```
+You should output:
+```
+    sum = 0
+    for num in arr:
+        sum += num
+    return sum
+```
