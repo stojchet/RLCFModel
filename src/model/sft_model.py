@@ -1,14 +1,10 @@
 import argparse
 import os
 import sys
-from typing import Tuple
 
 import hydra
-import numpy as np
-import torch
 import wandb
 import yaml
-from datasets import load_dataset, Dataset
 from dotenv import load_dotenv
 from trl import SFTTrainer
 from transformers import AutoTokenizer, TrainingArguments, EarlyStoppingCallback
@@ -17,7 +13,7 @@ from contextlib import nullcontext
 from huggingface_hub.hf_api import HfFolder
 from omegaconf import DictConfig
 
-from src.util import get_small_dataset, save_args_to_hf, PROJECT_DIR, get_dataset
+from src.util import save_args_to_hf, PROJECT_DIR, get_dataset
 
 """
 Run:
