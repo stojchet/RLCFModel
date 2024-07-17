@@ -17,8 +17,8 @@ from datasets import Dataset
 import gc
 from dotenv import load_dotenv
 
-from cf_dataset.code_string_util import extract_func_def_and_docstring
-from src.util import get_small_dataset, dtype_from_string, PROJECT_DIR
+from src.cf_dataset.code_string_util import extract_func_def_and_docstring
+from src.util import get_small_dataset, dtype_from_string, PROJECT_DIR, get_dataset_excluding_first_n
 from src.model_impl import Model
 
 PREDICTION = "prediction"
@@ -30,12 +30,12 @@ LABEL = "func_code_string"
 Example command run:
 python3 base_dataset.py \
 --language=java \
---dataset_name=stojchet/csn_filtered_subset \
+--prompt_path=stojchet/csn_filtered_subset \
 --config_path configs/base
 --config_name deepseek_bs1
 """
 
-parser = argparse.ArgumentParser(description="This script fine tunes a model with SFT.")
+parser = argparse.ArgumentParser(description="This script collects a base dataset with specified models' predictions.")
 parser.add_argument(
     "--config_path",
     type=str,
@@ -75,16 +75,13 @@ def _load_dataset(dataset_name: str, language: str, dataset_size: int, split: st
     return dataset
 
 
-def get_out_ds_name(model_name: str, prompt_name: str) -> str:
-    return model_name.split("/")[-1] + "-" + prompt_name
+def get_out_ds_name() -> str:
+    return args.config_name + "-" + Path(args.prompt_path).stem
 
 
 def prepare_prompt(base_prompt: str, datapoint):
-    if datapoint["language"] == "python":
-        func_def, fdef_docstring = extract_func_def_and_docstring(datapoint[FULL_CODE])
-        return ("", "") if fdef_docstring == None else (func_def, base_prompt + fdef_docstring)
-    else:
-        raise NotImplementedError("No support for java func extraction yet")
+    func_def, fdef_docstring = extract_func_def_and_docstring(datapoint, args.language)
+    return ("", "") if func_def == None else (func_def, base_prompt + fdef_docstring)
 
 
 def get_batches_from_dataset(dataset, batch_size):
@@ -94,7 +91,6 @@ def get_batches_from_dataset(dataset, batch_size):
 def _collect_predictions(
         dataset: Dataset,
         model: Model,
-        prompt_name: str,
         base_prompt: str,
         batch_size: int,
         split: str
@@ -106,7 +102,7 @@ def _collect_predictions(
                          (res := prepare_prompt(base_prompt, datapoint)) is not None]
 
         func_defs, full_prompts = zip(*batch_results)
-        batch[PREDICTION] = model.predict(list(full_prompts))
+        batch[PREDICTION] = [model.predict_single(list(full_prompts)[0])]
         # prepared prompt is what is being sent to the model for generation
         # Note this is not 100% accurate - indentation is added by hand -> rely on ast for extracting function body
         batch["prepared_prompt"] = list(full_prompts)
@@ -115,26 +111,26 @@ def _collect_predictions(
         gc.collect()
         final_dataset += batch.to_dict("records")
 
-        save_intermediate_ds(final_dataset, (i + 1) * batch_size, model, prompt_name, split)
+        save_intermediate_ds(final_dataset, (i + 1) * batch_size,  split)
 
     return Dataset.from_list(final_dataset)
 
 
-def save_intermediate_ds(final_dataset, i, model, prompt_name, split, n=1000):
+def save_intermediate_ds(final_dataset, i, split, n=1000):
     if i % n == 0:
         ds = Dataset.from_list(final_dataset)
-        _save_dataset(ds, "temp-" + get_out_ds_name(model.name, prompt_name), split=split, revision=str(float(i / n)))
+        _save_dataset(ds, "stojchet/" + get_out_ds_name(), split=split, revision=str(float(i / n)))
         print(i)
 
 
 def _save_dataset(dataset: Dataset, hf_ds_out_path: str, split: str,
-                  revision: Optional[str] = None,
-                  language: Optional[str] = None) -> None:
+                  revision: Optional[str] = None) -> None:
+    print("Saving dataset to {} {} {}".format(hf_ds_out_path, revision, args.language))
     dataset.push_to_hub(
         hf_ds_out_path,
         token=os.getenv('HF_WRITE_TOKEN'),
         revision=revision,
-        config_name=language if language else "default",
+        config_name=args.language,
         split=split
     )
 
@@ -143,7 +139,7 @@ def _upload_prompt():
     HfApi().upload_file(
         path_or_fileobj=PROJECT_DIR / args.config_path / (args.config_name + ".yaml"),
         path_in_repo="prompt.txt",
-        repo_id="stojchet/" + get_out_ds_name(args.config_name, Path(args.prompt_path).stem),
+        repo_id="stojchet/" + get_out_ds_name(),
         repo_type="dataset"
     )
 
@@ -164,10 +160,10 @@ def main(cfg: DictConfig) -> None:
         with open(PROJECT_DIR / args.prompt_path) as prompt_file:
             prompt = prompt_file.read()
 
-        predictions = _collect_predictions(dataset, model, Path(args.prompt_path).stem, prompt, cfg.batch_size, split)
-        _save_dataset(predictions, "stojchet/" + get_out_ds_name(args.config_name, Path(args.prompt_path).stem),
+        predictions = _collect_predictions(dataset, model, prompt, cfg.batch_size, split)
+        _save_dataset(predictions, "stojchet/" + get_out_ds_name(),
                       split=split,
-                      revision="main", language=args.language)
+                      revision="main")
 
     _upload_prompt()
 
