@@ -5,6 +5,7 @@ from typing import List
 from datasets import load_dataset, Dataset
 from dotenv import load_dotenv
 
+from src.cf_dataset.compiler import compile_function
 
 """
 Filter by size upper and lower limit of both documentation and code
@@ -47,6 +48,10 @@ def filter_code(datapoint):
         and (len(lines_of_code) - len(set(lines_of_code)) == 0)
 
 
+def code_compiles(row):
+    return compile_function[row["language"]](row["whole_func_string"])
+
+
 """
 Python specific filters
 """
@@ -57,7 +62,7 @@ def filter_code_by_size_python(datapoint, min_size: int = 60, max_size: int = 40
 
 
 def filter_doc_string(datapoint):
-    return not datapoint["whole_func_string"].str.contains("\"\"\"\"")
+    return "\"\"\"\"" not in datapoint["whole_func_string"]
 
 
 def filter_python_datapoint(datapoint) -> bool:
@@ -92,6 +97,7 @@ def all_filters(datapoint):
         and remove_docs_with_todo(datapoint)
         and remove_method_name_mentions_in_documentation(datapoint)
         and filter_code(datapoint)
+        and code_compiles(datapoint)
         and lang_spec
     )
 
@@ -102,7 +108,6 @@ def get_not_intersection_df(df1, df2):
 
     # get the dataframe that contains the exclusive records of df1
     not_intersection_df = df1.loc[exclusive_indices]
-    print(len(not_intersection_df))
     return not_intersection_df
 
 
@@ -142,4 +147,3 @@ if __name__ == '__main__':
                 config_name=lang,
                 split=split,
             )
-
