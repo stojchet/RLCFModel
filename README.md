@@ -150,10 +150,7 @@ Train an SFT model on top of the DPO model
 python3 src/model/sft_model.py --config_path=sft_conf_path --config_name=sft_conf --add_config_path=kto_conf_path --add_config_name=kto_conf
 ```
 
-## Evaluate pre-trained model
-Run
-
-
+## Evaluate
 Run `collect_predictions.py` for the specific model.
 To evaluate the plain KTO/DPO model
 ```shell
@@ -170,4 +167,19 @@ To get final metrics and upload them to wandb
 python3 src/evaluate/run_eval.py --config_path=sft_conf_path --config_name=sft_conf --add_config_path=kto_conf_path --add_config_name=kto_conf --path_to_prompt="$path_to_prompt" --batch_size="$batch_size"
 ```
 
-Run `src/evaluate/eval_plus.sh`. Evaluates model on MBPP or HumanEval using EvalPlus
+
+## Scripts
+
+1. Train nd evaluate sft
+```shell
+./src/full_scripts/train_and_eval.sh configs sft_conf src/prompt/python/empty.txt 1
+```
+2. Train and evaluate KTO
+```shell
+./src/full_scripts/kto_run_and_eval.sh configs/ktos kto_conf configs sft_conf src/prompt/python/empty.txt 1
+```
+
+3. Train and evaluate DPO
+ ```shell
+./src/full_scripts/dpo_run_and_eval.sh configs/dpos dpo_conf configs sft_conf src/prompt/python/empty.txt 1
+```
