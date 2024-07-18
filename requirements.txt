@@ -12,4 +12,17 @@ einops~=0.7.0
 evalplus~=0.2.1
 datasets~=2.19.0
 sentencepiece~=0.1.99
+tree-sitter==0.21.3
 accelerate @ git+https://github.com/huggingface/accelerate.git
+astunparse
+hydra-core
+wandb~=0.17.1
+tree_sitter_languages
+fire~=0.6.0
+tqdm~=4.66.2
+numpy~=1.26.4
+PyYAML~=6.0.1
+pandas~=2.2.1
+javalang~=0.13.0
+setuptools~=68.2.0
+matplotlib~=3.9.0
