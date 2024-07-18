@@ -19,6 +19,8 @@ import torch
 from src.util import get_small_dataset, save_args_to_hf, PROJECT_DIR, get_dataset
 
 """
+This script is used to train a KTO model
+
 Run:
 python3 kto _model.py --config_path configs --config_name kto
 """
@@ -42,6 +44,12 @@ sys.argv = ['main.py']
 
 
 def get_trainer(cfg: DictConfig):
+    """
+    This function is used to prepare the trainer for KTO.
+
+    Parameter:
+    DictConfig - that contains the hyperparameters of the model
+    """
     dataset_train, dataset_dev = get_dataset(cfg.dataset_size, cfg.dataset_name, cfg.language)
 
     tokenizer = AutoTokenizer.from_pretrained(cfg.base_model)

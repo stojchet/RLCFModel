@@ -15,6 +15,8 @@ from huggingface_hub.hf_api import HfFolder
 from src.util import save_args_to_hf, get_dataset, PROJECT_DIR
 
 """
+This script is used to train a DPO model
+
 Run:
 python3 dpo_model.py --config_path configs --config_name dpo
 """
@@ -38,6 +40,12 @@ sys.argv = ['main.py']
 
 
 def get_trainer(cfg: DictConfig):
+    """
+    This function is used to prepare the trainer for DPO.
+
+    Parameter:
+    DictConfig - that contains the hyperparameters of the model
+    """
     dataset_train, dataset_dev = get_dataset(cfg.dataset_size, cfg.dataset_name, cfg.language)
     tokenizer = AutoTokenizer.from_pretrained(cfg.base_model)
 

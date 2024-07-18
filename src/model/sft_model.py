@@ -7,7 +7,7 @@ import wandb
 import yaml
 from dotenv import load_dotenv
 from trl import SFTTrainer
-from transformers import AutoTokenizer, TrainingArguments, EarlyStoppingCallback
+from transformers import AutoTokenizer, TrainingArguments, EarlyStoppingCallback, AutoModelForCausalLM
 from peft import LoraConfig
 from contextlib import nullcontext
 from huggingface_hub.hf_api import HfFolder
@@ -16,6 +16,7 @@ from omegaconf import DictConfig
 from src.util import save_args_to_hf, PROJECT_DIR, get_dataset
 
 """
+This script is used to train a SFT model
 Run:
 python src/model/sft_model.py --config_path configs --config_name sft
 """
@@ -50,6 +51,12 @@ sys.argv = ['main.py']
 
 
 def get_trainer(cfg: DictConfig):
+    """
+    This function is used to prepare the trainer for SFT.
+
+    Parameter:
+    DictConfig - that contains the hyperparameters of the model
+    """
     dataset_train, dataset_dev = get_dataset(cfg.dataset_size, cfg.dataset_name, cfg.language)
 
     tokenizer = AutoTokenizer.from_pretrained(base_model, trust_remote_code=True, use_fast=True)
