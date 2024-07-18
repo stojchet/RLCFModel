@@ -8,16 +8,33 @@ from tqdm import tqdm
 
 
 def compiles(prediction: str) -> bool:
+    """
+    Returns a boolean indicating whether the code compiled successfully
+    """
     return compile_java_code(prediction).code == 0
 
 
 @dataclass
 class CompilerOutput:
+    """
+    Dataclasses used to store compilation code and output
+    """
     output: str
     code: int
 
 
 def compile_java_code(java_function, add_in_class: bool = True) -> CompilerOutput:
+    """
+    This function compiles a given piece of Java code.
+
+    Parameters:
+    java_function (str): A string representation of a java function's code.
+    add_in_class (bool): A flag to decide whether the provided function needs to be enclosed within a dummy java class.
+
+    Returns:
+    CompilerOutput
+    """
+
     if add_in_class:
         java_code = add_java_function_in_class(java_function)
     else:
