@@ -151,6 +151,9 @@ python3 src/model/sft_model.py --config_path=sft_conf_path --config_name=sft_con
 ```
 
 ## Evaluate
+Before evaluating anything mxeval must be set up in external folder.
+The changes that I've made in the library are marked with a `# Teodora Stojcheska addition` comment.
+
 Run `collect_predictions.py` for the specific model.
 To evaluate the plain KTO/DPO model
 ```shell
