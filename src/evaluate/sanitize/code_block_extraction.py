@@ -7,15 +7,12 @@ from tqdm import tqdm
 from src.evaluate.sanitize.function_extraction import extract_function_completion
 
 
-def extract_code_blocks(response: str):
-    code_snippets = re.findall(r"`{3}([^\n]*)\n?([\S\s]*?)\n?`{3}", response)
-    if not code_snippets:
-        return ""
-    return str(code_snippets[0][1])
-
-
 def sanitize_dataset(dataset: Dataset, base_prompt: str,
                      predictions_field: str= "solution", prompt_field: str = "prompt"):
+    """
+    This function sanitizes a dataset by extracting function completions
+    from the model output for each data point in the dataset.
+    """
     sanitized_predictions = []
     prep_text = []
     language = dataset[0]["language"]
