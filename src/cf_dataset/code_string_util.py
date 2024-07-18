@@ -19,6 +19,9 @@ def remove_initial_docstring(node):
 
 
 def extract_function_body(func_string, language):
+    """
+    It extracts the function body from a string containing a Java or Python function
+    """
     if language == "python":
         mode = compile(func_string, '<string>', 'exec', ast.PyCF_ONLY_AST)
         remove_docstring(mode)
@@ -51,6 +54,18 @@ class DocStringCollector(ast.NodeVisitor):
 
 
 def extract_func_def_and_docstring(datapoint, language: str):
+    """
+    The function extracts the function definition and the docstring from the given data point.
+
+    Parameters:
+    datapoint (dict): Dictionary containing the 'func_code_string' and 'func_documentation_string'.
+    language (str): The language (either "python" or "java") of the function in the datapoint.
+
+    Returns:
+    Tuple[str, str]: A tuple containing two strings.
+                     The first one is the function definition
+                     and the second is the function definition with the docstring
+    """
     func = datapoint["func_code_string"]
     if language == "python":
         collector = DocStringCollector()

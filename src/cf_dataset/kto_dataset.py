@@ -40,6 +40,19 @@ def create_kto_dataset(
         target_const: str = LABEL,
         prediction_const: str = PREDICTION
 ) -> Dataset:
+    """
+    This function creates a new dataset for Kahneman-Tversky Optimization (KTO).
+    For each data point, it extracts the function completion from the prediction.
+    If the function does not compile, it is added to the new dataset with a 'label' set to False.
+
+    Parameters:
+    dataset (Dataset): The input dataset as a huggingface Dataset object.
+    language (str): The language (For e.g: "python", "java") of the functions in dataset.
+    prompt_const (str): The constant string to identify the prompts in the dataset.
+    target_const (str): The constant string to identify the targets in the dataset.
+    prediction_const (str): The constant string to identify the predictions in the dataset.
+
+    """
     new_dataset = []
 
     # add all examples that don't compile as false examples

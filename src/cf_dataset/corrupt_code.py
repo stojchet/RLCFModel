@@ -84,6 +84,16 @@ java_keywords_misspellings = {
 }
 
 def corrupt_java_code(java_code):
+    """
+    This function randomly "corrupts" a line from the given Java code by replacing a keyword with a misspelled version.
+    Or by removing a special symbol.
+
+    Parameters:
+    java_code (str): The input Java code as a string.
+
+    Returns:
+    str: The corrupted Java code as a string.
+    """
     code_lines = java_code.split('\n')
     code_line_indices = list(range(len(code_lines)))
     should_corrupt = True
@@ -180,6 +190,16 @@ python_keywords_misspellings = {
 
 
 def corrupt_python_code(python_code):
+    """
+    This function randomly "corrupts" a line from the given Python code by replacing a keyword with a misspelled version.
+    Or by removing a special symbol.
+
+    Parameters:
+    java_code (str): The input Python code as a string.
+
+    Returns:
+    str: The corrupted Python code as a string.
+    """
     code_lines = python_code.split('\n')
     code_line_indices = list(range(len(code_lines)))
     should_corrupt = True

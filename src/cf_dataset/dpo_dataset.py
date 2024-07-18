@@ -10,6 +10,7 @@ from src.cf_dataset.code_string_util import extract_function_body, extract_func_
 from src.cf_dataset.compiler import compile_function
 from src.cf_dataset.dataset_constants import LABEL, PREDICTION
 from src.evaluate.sanitize.function_extraction import extract_function_completion
+from util import get_small_dataset
 
 """
 This script takes a base dataset and creates a KTO compatible dataset
@@ -50,6 +51,23 @@ def create_dpo_dataset(
         target_const: str = LABEL,
         prediction_const: str = PREDICTION
 ) -> Dataset:
+    """
+    This function creates a new dataset for Direct Preference Optimization (DPO).
+    For each data point in the base dataset, extracts the function completion from the prediction.
+    If the function does not compile, it is added to the new dataset as a 'rejected' item
+    along with the 'prompt' and 'chosen' item.
+
+    Parameters:
+    dataset (Dataset): The input dataset as a huggingface Dataset object.
+    language (str): The language (For e.g: "python", "java") of the functions in dataset.
+    prompt_const (str): The constant string to identify the prompts in the dataset.
+    target_const (str): The constant string to identify the targets in the dataset.
+    prediction_const (str): The constant string to identify the predictions in the dataset.
+
+    Returns:
+    Dataset
+    """
+
     # add all examples that don't compile as false examples
     # ps paper proved that it's ok to have a dis-balance of positive negative examples
     nonempty = 0
@@ -116,6 +134,7 @@ if __name__ == "__main__":
     for split in ["train", "validation"]:
         print(split)
         base_dataset = get_base_dataset(args.base_dataset_name, args.language, split)
+        base_dataset = get_small_dataset(base_dataset.to_iterable_dataset(), 20000)
         out_dataset = create_dpo_dataset(base_dataset, args.language, "prepared_prompt").shuffle()
         print("len: " + str(len(out_dataset)))
         prefix = ""

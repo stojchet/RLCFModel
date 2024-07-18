@@ -27,6 +27,8 @@ FULL_CODE = "whole_func_string"
 LABEL = "func_code_string"
 
 """
+This script collects the base dataset. It takes the seed dataset and collects predictions and uploads in on HuggingFace.
+
 Example command run:
 python3 base_dataset.py \
 --language=java \
@@ -95,6 +97,21 @@ def _collect_predictions(
         batch_size: int,
         split: str
 ) -> Dataset:
+    """
+    This function collects the model predictions on the dataset in batches, and prepares a final dataset.
+
+    Parameters:
+    dataset (Dataset): The input dataset on which model's prediction is to be run.
+    model (Model): The model object used for making predictions.
+    base_prompt (str): The base prompt string which is used to prepare a full prompt with a data point from the batch.
+    batch_size (int): The size of the batch that needs to be prepared from the dataset.
+    split (str): Split type, which could be 'train', 'test' or 'valid'.
+
+    Returns:
+    Dataset: The final_dataset consists of the batch data along with model's predictions,
+             prepared prompts and function definitions.
+    """
+
     final_dataset = []
     batches = get_batches_from_dataset(dataset.to_pandas(), batch_size)
     for i, batch in tqdm(enumerate(batches)):
@@ -117,6 +134,9 @@ def _collect_predictions(
 
 
 def save_intermediate_ds(final_dataset, i, split, n=1000):
+    """
+    This function stores intermediate dataset to the Hub at revision dataset size / n for every n generated predictions
+    """
     if i % n == 0:
         ds = Dataset.from_list(final_dataset)
         _save_dataset(ds, "stojchet/" + get_out_ds_name(), split=split, revision=str(float(i / n)))
@@ -125,6 +145,17 @@ def save_intermediate_ds(final_dataset, i, split, n=1000):
 
 def _save_dataset(dataset: Dataset, hf_ds_out_path: str, split: str,
                   revision: Optional[str] = None) -> None:
+    """
+    This function saves the provided Dataset object to the Hub.
+
+    Parameters:
+    dataset (Dataset): The Dataset object to be saved.
+    hf_ds_out_path (str): The Hub path where the dataset is to be saved.
+    split (str): The split for the dataset. Could be "train", "test", "valid".
+    revision (Optional[str]): The revision string for version control.
+    This parameter is used for intermediate storing of the dataset.
+
+    """
     print("Saving dataset to {} {} {}".format(hf_ds_out_path, revision, args.language))
     dataset.push_to_hub(
         hf_ds_out_path,
