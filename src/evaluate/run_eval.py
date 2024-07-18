@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 from huggingface_hub import HfFolder
 from omegaconf import DictConfig
 
-from src.cf_dataset.compiler import compile_code
+from src.cf_dataset.compiler import compile_function
 from src.evaluate.sanitize.code_block_extraction import sanitize_dataset
 from src.util import PROJECT_DIR
 
@@ -55,6 +55,12 @@ parser.add_argument(
     type=str,
     default=None,
 )
+parser.add_argument(
+    "--out",
+    type=str,
+    default=None,
+)
+
 
 args, unknown = parser.parse_known_args()
 
@@ -63,6 +69,19 @@ sys.argv = ['main.py']
 
 
 def get_dataset(dataset_name: str, name: str):
+    """
+    This function loads a given dataset, sanitizes it, prints the number of examples that compile successfully,
+    and saves it to a temporary file.
+    The goal is to prepare the dataset on which mxeval will be run.
+
+    Parameters:
+    dataset_name (str): The name or path of the dataset to load.
+    name (str): The name used for the loaded dataset.
+
+    Returns:
+    str: The path of the temporary file.
+
+    """
     dataset = load_dataset("stojchet/" + dataset_name, revision="main", split="train", name=name, trust_remote_code=True)
     sanitized = sanitize_dataset(dataset, "", predictions_field="completion")
 
@@ -80,9 +99,16 @@ def get_dataset(dataset_name: str, name: str):
 
 
 def print_number_of_examples_that_compile(sanitized, benchmark):
+    """
+    This function prints the number of function completions in a sanitized dataset that compile.
+
+    Parameters:
+    sanitized (list): The sanitized dataset, which is a list of dictionaries where each dictionary contains a completion.
+    benchmark (str): The name of the benchmark or dataset being processed.
+    """
     i = 0
     for example in sanitized:
-        if compile_code(example["prompt"] + "\n" + example["completion"]):
+        if compile_function[args.language](example["prompt"] + "\n" + example["completion"]) and len(example["completion"]) > 0:
             i += 1
     print(f"Number of examples that compile in {benchmark}: {i}")
 
@@ -123,12 +149,13 @@ def main(cfg: DictConfig):
     load_dotenv()
     HfFolder.save_token(os.getenv('HF_WRITE_TOKEN'))
 
-    language = args.language if args.pred_dataset else cfg["language"]
-    dataset_name = args.pred_dataset if args.pred_dataset else dataset_full_name()
+    args.language = args.language if args.pred_dataset else cfg["language"]
+    dataset_name = args.pred_dataset.split("/")[-1] if args.pred_dataset else dataset_full_name()
     print(dataset_name)
+
     mbxp_temp = get_dataset(dataset_name, "mbxp")
     humaneval_temp = get_dataset(dataset_name, "humaneval")
-    if language == "python":
+    if args.language == "python":
         mbxp_data = PROJECT_DIR / 'external/mxeval/data/mbxp/mbpp_release_v1.jsonl'
         humaneval_data = PROJECT_DIR / "external/mxeval/data/multilingual_humaneval/HumanEval.jsonl"
     else:
@@ -142,7 +169,6 @@ def main(cfg: DictConfig):
     command = [PROJECT_DIR / 'external/mxeval/mxeval/evaluate_functional_correctness.py', humaneval_temp,
                '--problem_file', humaneval_data]
     subprocess.call(command)
-
 
 
 if __name__ == "__main__":
