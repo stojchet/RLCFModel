@@ -2,8 +2,13 @@ import gc
 from typing import Union, List
 
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer, T5ForConditionalGeneration
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
+
+"""
+This class wraps a transformer model with methods for generating predictions from prompts.
+It uses the HuggingFace AutoModelForCausalLM and AutoTokenizer classes to perform tokenization and generation.
+"""
 
 class Model:
     def __init__(self,
@@ -18,38 +23,24 @@ class Model:
         self.padding = padding
         self.truncation = truncation
 
-        if self.__is_code_t5():
-            self.model = T5ForConditionalGeneration.from_pretrained(name)
-        else:
-            self.model = AutoModelForCausalLM.from_pretrained(name, trust_remote_code=True, torch_dtype=torch_dtype)
+        self.model = AutoModelForCausalLM.from_pretrained(name, trust_remote_code=True, torch_dtype=torch_dtype)
         self.tokenizer = AutoTokenizer.from_pretrained(name, trust_remote_code=True, use_fast=True)
         self.tokenizer.padding_side = "left"
         self.tokenizer.pad_token = self.tokenizer.eos_token
         self.model.config.pad_token_id = self.model.config.eos_token_id
 
-    def predict_single(self, prompt: str) -> str:
-        if self.__is_code_t5():
-            prompt = prompt + "<extra_id_0>"
-
-        inputs = self.tokenizer(prompt, return_tensors="pt", return_attention_mask=False, truncation=self.truncation,
-                                padding=self.padding)
-
-        outputs = self.model.generate(**inputs,
-                                      max_new_tokens=self.max_new_tokens,
-                                      do_sample=True,
-                                      pad_token_id=self.tokenizer.pad_token_id
-                                      )
-        result = self.tokenizer.batch_decode(outputs)[0]
-
-        torch.cuda.empty_cache()
-        gc.collect()
-
-        return result
-
     def predict(self, prompts: List[str]) -> str:
-        if self.__is_code_t5():
-            prompts = [prompt + "<extra_id_0>" for prompt in prompts]
+        """
+        This method generates a list of predictions from a list of string prompts.
+        It tokenizes the prompts, generates outputs from the model, and decodes the outputs into a list of strings.
 
+        Parameters:
+        prompts (List[str]): The list of prompts for the model to generate from.
+
+        Returns:
+        List[str]: The list of generated strings.
+
+        """
         # attention mask
         tokenized = self.tokenizer(prompts, return_tensors="pt", return_attention_mask=False,
                                    truncation=self.truncation, padding=True)
@@ -65,6 +56,3 @@ class Model:
         gc.collect()
 
         return result
-
-    def __is_code_t5(self):
-        return "codet5" in self.name.lower()
