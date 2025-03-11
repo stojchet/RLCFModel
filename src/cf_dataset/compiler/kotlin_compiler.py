@@ -90,11 +90,3 @@ def print_not_compilable_kotlin_count(dataset_name: str):
 
     print(f"Error count: {errors}")
 
-
-code = """// Function to calculate the factorial of a number
-fun factorial(n: Int): Long {
-    require(n >= 0) { "Factorial is not defined for negative numbers" }
-    return if (n <= 1) 1L else n * factorial(n - 1)
-}"""
-print(compiles_kotlin(code))
-
