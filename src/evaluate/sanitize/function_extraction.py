@@ -16,10 +16,13 @@ def extract_function_completion(model_output, prompt):
 
     completion_lines = completion.splitlines()
 
+    # todo: this doesnt remove comments - decide if I want to - see if metrics are only exec based
     code_lines = []
     for line in completion_lines:
         if line == "": continue
         if not line.startswith('\t') and not line.startswith(' '):
+            if line == "}":
+                code_lines.append(line)
             break
         code_lines.append(line)
 

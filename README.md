@@ -5,15 +5,26 @@ The goal of the coarse tuning is to align the model's output with compilable cod
 
 ### Requirements
 * Python >3.9
-* To install all requirements run: `pip install requirements.txt`
+* To install all requirements run: `pip install -r requirements.txt`
 
 #### Tokens
 Create a .env file and add your `HF_WRITE_TOKEN`.
 
+## Datasets
+Open `notebooks/dataset_explorations.ipynb` the datasets creation process is depicted, and a small analysis of the datasets.
+Terminology:
+- seed dataset: is code_search_net or JetBrains/KExercises.
+- base dataset: seed dataset + model predictions.
+- kto/dpo dataset: reference, prediction and necessary signal for model.
+
 ## Train model
+The training of a model is defined by a yaml config.
+Configs are located in configs/<config_name>.yaml. For each model type there is a different config. Please copy the config templates for sft/kto/dpo and set the wanted parameters.
+
+Overview of process can be seen in `notebooks/train_models.ipynb`
 
 ### Run SFT
-In order to train an sft model, first create a yaml config specifying the hyperparameters.
+In order to train a sft model, first create a yaml config specifying the hyperparameters.
 
 ```yaml
 max_seq_length: 1500
@@ -26,7 +37,7 @@ learning_rate: 1.41e-6
 lora_r: 64
 lora_alpha: 16
 lora_dropout: 0.05
-dataset_name: stojchet/csn_java_python_subset
+dataset_name: stojchet/base_prediction_dataset
 base_model: deepseek-ai/deepseek-coder-1.3b-base
 dataset_ref_field: whole_func_string
 ```
@@ -41,7 +52,7 @@ python3 src/model/sft_model.py --config_path configs --config_name sft
 
 Create a yaml config for the hyperparameters
 ```yaml
-dataset_name: "stojchet/csn_java_python_subset"
+dataset_name: "stojchet/base_prediction_dataset"
 batch_size: 1
 model_name: "deepseek-ai/deepseek-coder-1.3b-base"
 max_new_tokens: 1000
@@ -53,12 +64,14 @@ Run the script for collecting base dataset
 ```shell
 python3 base_dataset.py \
 --language=java \
---prompt_path=src/prompts/python/empty.txt \
 --config_path configs/base
 --config_name deepseek_bs1
 ```
 
 The final dataset will be saved as {config_name}-{prompt_name}, in above case deepseek_bs1-empty
+
+### Dataset description
+Very inconveniently so `solution` is called `code_completion`
 
 ### Run DPO
 #### Collect Dataset
@@ -173,16 +186,16 @@ python3 src/evaluate/run_eval.py --config_path=sft_conf_path --config_name=sft_c
 
 ## Scripts
 
-1. Train nd evaluate sft
+1. Train and evaluate SFT model
 ```shell
 ./src/full_scripts/train_and_eval.sh configs sft_conf src/prompt/python/empty.txt 1
 ```
-2. Train and evaluate KTO
+2. Train and evaluate KTO model
 ```shell
 ./src/full_scripts/kto_run_and_eval.sh configs/ktos kto_conf configs sft_conf src/prompt/python/empty.txt 1
 ```
 
-3. Train and evaluate DPO
+3. Train and evaluate DPO model
  ```shell
 ./src/full_scripts/dpo_run_and_eval.sh configs/dpos dpo_conf configs sft_conf src/prompt/python/empty.txt 1
 ```

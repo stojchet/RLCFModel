@@ -50,7 +50,7 @@ def get_trainer(cfg: DictConfig):
     Parameter:
     DictConfig - that contains the hyperparameters of the model
     """
-    dataset_train, dataset_dev = get_dataset(cfg.dataset_size, cfg.dataset_name, cfg.language)
+    dataset_train, dataset_dev = get_dataset(cfg.dataset_size if cfg.dataset_size != "inf" else np.inf, cfg.dataset_name, cfg.language)
 
     tokenizer = AutoTokenizer.from_pretrained(cfg.base_model)
     quantization_config = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16)

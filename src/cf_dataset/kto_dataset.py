@@ -4,9 +4,10 @@ import os
 from datasets import Dataset, load_dataset
 from tqdm import tqdm
 
-from src.cf_dataset.code_string_util import extract_function_body, extract_func_def_and_docstring
 from src.cf_dataset.compiler import compile_function
+from src.cf_dataset.corrupt_code import corrupt_code
 from src.cf_dataset.dataset_constants import LABEL, PREDICTION
+from src.cf_dataset.util import get_whole_prediction_function
 from src.evaluate.sanitize.function_extraction import extract_function_completion
 from src.util import get_small_dataset
 
@@ -20,23 +21,33 @@ python3 kto_dataset.py \
 
 """
 
-parser = argparse.ArgumentParser(description="Creates a dataset for KTO -> positive/negative examples dataset.")
-parser.add_argument(
-    "--base_dataset_name",
-    type=str,
-    required=True,
-)
-parser.add_argument(
-    "--language",
-    type=str,
-    default="all",
-)
+def get_args():
+    parser = argparse.ArgumentParser(description="Creates a dataset for KTO -> positive/negative examples dataset.")
+    parser.add_argument(
+        "--base_dataset_name",
+        type=str,
+        required=True,
+    )
+    parser.add_argument(
+        "--language",
+        type=str,
+        default="all",
+    )
+    parser.add_argument(
+        "--not_compile",
+        type=float,
+        default=0.5,
+        help="Percentage of examples in the final dataset that do not compile."
+             "If not enough bad model predictions, the predictions will be corrupted."
+    )
 
+    return parser.parse_args()
 
 def create_kto_dataset(
         dataset: Dataset,
         language: str,
-        prompt_const: str,
+        not_compile: float,
+        prompt_const: str = "prompt",
         target_const: str = LABEL,
         prediction_const: str = PREDICTION
 ) -> Dataset:
@@ -53,27 +64,24 @@ def create_kto_dataset(
     prediction_const (str): The constant string to identify the predictions in the dataset.
 
     """
-    new_dataset = []
-
     # add all examples that don't compile as false examples
-    # ps paper proved that it's ok to have a dis-balance of positive negative examples
+    # p.s. paper proved that it's ok to have a dis-balance of positive negative examples
     nonempty = 0
     all_compile = 0
 
+    not_compile_dataset = []
+    corrupt_dataset = []
+
     for datapoint in tqdm(dataset):
-        prediction = datapoint[prediction_const].replace("<｜begin▁of▁sentence｜>", "")
+        prediction = datapoint[prediction_const].replace("<｜begin▁of▁sentence｜>", "") # todo: remove
         prediction = prediction.replace("<｜end▁of▁sentence｜>", "")
         code = extract_function_completion(prediction, datapoint[prompt_const])
 
-        if language == "java":
-            prompt = extract_func_def_and_docstring(datapoint, language)[1]
-            code += "\n}"
-        else:
-            prompt = datapoint[prompt_const]
+        prompt = datapoint[prompt_const]
 
-        whole_func = prompt + "\n" + code
-        if not compile_function[language](whole_func) and code != "":
-            new_dataset.append(
+        whole_prediction_func = get_whole_prediction_function(datapoint, code)
+        if not compile_function[language](whole_prediction_func):
+            not_compile_dataset.append(
                 {
                     "prompt": prompt,
                     "completion": code,
@@ -82,8 +90,23 @@ def create_kto_dataset(
             )
         else:
             all_compile += 1
+
+            corrupt_dataset.append(
+                {
+                    "prompt": prompt,
+                    "completion": corrupt_code(code, language),
+                    "label": False,
+                }
+            )
         if code != "":
             nonempty += 1
+
+
+    # total_not_compile_count / (len(dataset) + total_not_compile_count) = not_compile
+    total_not_compile_count = int(len(dataset) * not_compile / (1 - not_compile))
+    corrupt_examples_count = max(0, total_not_compile_count - len(not_compile_dataset))
+
+    new_dataset = not_compile_dataset + corrupt_dataset[:corrupt_examples_count]
 
     print("nonempty: " + str(nonempty))
     print("compile: " + str(all_compile))
@@ -93,10 +116,10 @@ def create_kto_dataset(
     new_dataset += [
         {
             "prompt": datapoint[prompt_const],
-            "completion": extract_function_body(datapoint[target_const], language),
+            "completion": datapoint["code_completion"],
             "label": True,
         }
-        for datapoint in get_small_dataset(dataset.to_iterable_dataset(), len(new_dataset))
+        for datapoint in dataset
     ]
 
     return Dataset.from_list(new_dataset)
@@ -107,11 +130,14 @@ def get_base_dataset(dataset_name: str, language: str, split: str) -> Dataset:
 
 
 if __name__ == "__main__":
-    args = parser.parse_args()
+    args = get_args()
+    print(args)
     for split in ["train",  "validation", "test"]:
         print(split)
         base_dataset = get_base_dataset(args.base_dataset_name, args.language, split)
-        out_dataset = create_kto_dataset(base_dataset, args.language, "prepared_prompt").shuffle()
+        # base_dataset = get_small_dataset(base_dataset.to_iterable_dataset(), 10)
+
+        out_dataset = create_kto_dataset(base_dataset, args.language, not_compile=args.not_compile).shuffle()
         print("len: " + str(len(out_dataset)))
 
         out_dataset.push_to_hub(

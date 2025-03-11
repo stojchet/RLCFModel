@@ -3,11 +3,12 @@ import os
 import sys
 
 import hydra
+import torch
 import wandb
 import yaml
 from dotenv import load_dotenv
 from trl import SFTTrainer
-from transformers import AutoTokenizer, TrainingArguments, EarlyStoppingCallback, AutoModelForCausalLM
+from transformers import AutoTokenizer, TrainingArguments, EarlyStoppingCallback
 from peft import LoraConfig
 from contextlib import nullcontext
 from huggingface_hub.hf_api import HfFolder
@@ -19,6 +20,11 @@ from src.util import save_args_to_hf, PROJECT_DIR, get_dataset
 This script is used to train a SFT model
 Run:
 python src/model/sft_model.py --config_path configs --config_name sft
+
+Configs are located in configs/<config_name>.yaml. 
+The additional config is used when training a KTO/DPO trained model. And then you set the config od the DPO/KTO trained model with add_config_path and name parameters.
+
+The dataset and language for the model is set from the yaml configs.
 """
 
 parser = argparse.ArgumentParser(description="This script fine tunes a model with SFT.")
@@ -47,7 +53,8 @@ args, unknown = parser.parse_known_args()
 # Construct hydra compatible sys.argv
 sys.argv = ['main.py']
 
-# torch.set_default_device('cuda')
+torch.set_default_device('cuda')
+torch.set_float32_matmul_precision('high')
 
 
 def get_trainer(cfg: DictConfig):
@@ -57,7 +64,8 @@ def get_trainer(cfg: DictConfig):
     Parameter:
     DictConfig - that contains the hyperparameters of the model
     """
-    dataset_train, dataset_dev = get_dataset(cfg.dataset_size, cfg.dataset_name, cfg.language)
+    import numpy as np
+    dataset_train, dataset_dev = get_dataset(cfg.dataset_size if cfg.dataset_size != "inf" else np.inf, cfg.dataset_name, cfg.language)
 
     tokenizer = AutoTokenizer.from_pretrained(base_model, trust_remote_code=True, use_fast=True)
 
@@ -78,6 +86,7 @@ def get_trainer(cfg: DictConfig):
         warmup_steps=200,
         lr_scheduler_type="linear",
         load_best_model_at_end=True,
+        dataloader_pin_memory=False,
     )
 
     kwargs = {'revision': 'main', 'trust_remote_code': False, 'attn_implementation': None, 'torch_dtype': None,
@@ -87,9 +96,6 @@ def get_trainer(cfg: DictConfig):
         early_stopping_patience=5,
         early_stopping_threshold=0.0
     )
-
-    def formatting_func(example):
-        return "```python" + example[cfg.dataset_ref_field] + "```"
 
     model_name = model_full_name().split("/")[-1]
     run = wandb.init(
@@ -134,6 +140,7 @@ def model_full_name():
         return args.add_config_name + "-" + args.config_name
 
 
+print(PROJECT_DIR / args.config_path)
 @hydra.main(config_path=str(PROJECT_DIR / args.config_path), config_name=args.config_name)
 def main(cfg: DictConfig):
     load_dotenv()

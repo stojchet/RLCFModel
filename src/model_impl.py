@@ -29,7 +29,7 @@ class Model:
         self.tokenizer.pad_token = self.tokenizer.eos_token
         self.model.config.pad_token_id = self.model.config.eos_token_id
 
-    def predict(self, prompts: List[str]) -> str:
+    def predict(self, prompts: List[str], attention_mask=None) -> str:
         """
         This method generates a list of predictions from a list of string prompts.
         It tokenizes the prompts, generates outputs from the model, and decodes the outputs into a list of strings.
@@ -42,8 +42,10 @@ class Model:
 
         """
         # attention mask
-        tokenized = self.tokenizer(prompts, return_tensors="pt", return_attention_mask=False,
-                                   truncation=self.truncation, padding=True)
+        tokenized = self.tokenizer(prompts,
+                                   return_tensors="pt",
+                                   truncation=self.truncation,
+                                   padding=True)
 
         outputs = self.model.generate(**tokenized,
                                       max_new_tokens=self.max_new_tokens,

@@ -3,6 +3,20 @@ import re
 
 from datasets import Dataset
 
+def corrupt_code(code, language):
+    if code == "":
+        return ""
+    if language == "python":
+        corrupt_prediction = corrupt_python_code(code)
+    elif language == "java":
+        corrupt_prediction = corrupt_java_code(code)
+    elif language == "kotlin":
+        corrupt_prediction = corrupt_kotlin_code(code)
+    else:
+        raise ValueError(f"Language {language} not supported")
+
+    return corrupt_prediction
+
 java_keywords_misspellings = {
     "abstract": ["abstrcat", "abstact", "abstrac"],
     "assert": ["assret", "asert", "assertt"],
@@ -225,6 +239,130 @@ def corrupt_python_code(python_code):
 
         token_to_replace = random.choice(possible_tokens)
         replace_with = random.choice(python_keywords_misspellings[token_to_replace])
+
+        code_lines[random_index] = line.replace(token_to_replace, replace_with, 1)
+        should_corrupt = False
+
+    return '\n'.join(code_lines)
+
+
+
+kotlin_keywords_misspellings = {
+    "abstract": ["abstrcat", "abstact", "abstrac"],
+    "annotation": ["anotation", "annottion", "annottation"],
+    "as": ["a", "az", "ass"],
+    "break": ["brek", "brak", "breeak"],
+    "class": ["clss", "cllas", "clsss"],
+    "continue": ["conitnue", "cntinue", "contnue"],
+    "constructor": ["constrctor", "constructr", "constrcutor"],
+    "crossinline": ["crossnline", "crosslne", "crossineline"],
+    "data": ["dta", "dat", "dataa"],
+    "do": ["d", "od", "doe"],
+    "else": ["els", "elese", "elsee"],
+    "enum": ["enmu", "enum", "emum"],
+    "external": ["exteral", "eternal", "extenal"],
+    "false": ["flase", "fasle", "falee"],
+    "final": ["fianal", "fnal", "finala"],
+    "finally": ["finlly", "finaly", "finalyl"],
+    "for": ["fo", "forr", "foor"],
+    "fun": ["fn", "fu", "funn"],
+    "if": ["f", "iff", "ifff"],
+    "in": ["i", "inn", "ni"],
+    "inline": ["inlnie", "inlne", "inlinee"],
+    "interface": ["interfcae", "inetrface", "interace"],
+    "internal": ["interal", "intnal", "interanl"],
+    "is": ["i", "iss", "si"],
+    "lateinit": ["latenit", "lateninit", "latnit"],
+    "null": ["nul", "nll", "nall"],
+    "object": ["obect", "objct", "obejct"],
+    "open": ["oen", "opn", "opne"],
+    "operator": ["opertor", "operatr", "opeartor"],
+    "out": ["ot", "uot", "outt"],
+    "override": ["ovride", "overide", "overrid"],
+    "package": ["pakcage", "pacakge", "packge"],
+    "private": ["privte", "privat", "pirvate"],
+    "protected": ["proetcted", "proected", "prtected"],
+    "public": ["publc", "pubic", "pblic"],
+    "return": ["retun", "retur", "rturn"],
+    "sealed": ["seled", "seal", "seald"],
+    "super": ["supe", "supr", "supper"],
+    "suspend": ["suspned", "susend", "suspendd"],
+    "this": ["tis", "thi", "thsi"],
+    "throw": ["thow", "thrw", "trow"],
+    "true": ["tru", "tre", "ture"],
+    "try": ["ty", "tr", "trry"],
+    "typealias": ["tyealais", "typealis", "tpealias"],
+    "val": ["vl", "va", "vall"],
+    "var": ["vr", "va", "varr"],
+    "vararg": ["varrg", "vaarg", "varag"],
+    "when": ["wen", "whn", "whne"],
+    "while": ["whle", "wile", "wihle"],
+    "{": [""],
+    "}": [""],
+    "(": [""],
+    ")": [""],
+    "[": [""],
+    "]": [""],
+    ";": [""],
+    ",": [""],
+    ".": [""],
+    "+": [""],
+    "-": [""],
+    "*": [""],
+    "/": [""],
+    "&": [""],
+    "|": [""],
+    "^": [""],
+    "%": [""],
+    "!": [""],
+    "~": [""],
+    "?": [""],
+    ":": [""],
+    "<": [""],
+    ">": [""],
+    "=": [""],
+    "'": [""],
+    "\"": [""],
+    "//": [""]
+}
+
+
+def corrupt_kotlin_code(kotlin_code):
+    """
+    This function randomly "corrupts" a line from the given Kotlin code by replacing a keyword with a misspelled version.
+    Or by removing a special symbol.
+
+    Parameters:
+    kotlin_code (str): The input Kotlin code as a string.
+
+    Returns:
+    str: The corrupted Kotlin code as a string.
+    """
+    code_lines = kotlin_code.split('\n')
+    code_line_indices = list(range(len(code_lines)))
+    should_corrupt = True
+
+    possible_tokens = []
+    pattern = r'\w+|\S'
+
+    while should_corrupt:
+        random_index = random.choice(code_line_indices)
+        line = code_lines[random_index]
+
+        if line.lstrip().startswith("//"):
+            continue
+
+        tokens = re.findall(pattern, line)
+
+        for token in tokens:
+            if token in kotlin_keywords_misspellings:
+                possible_tokens.append(token)
+
+        if len(possible_tokens) == 0:
+            continue
+
+        token_to_replace = random.choice(possible_tokens)
+        replace_with = random.choice(kotlin_keywords_misspellings[token_to_replace])
 
         code_lines[random_index] = line.replace(token_to_replace, replace_with, 1)
         should_corrupt = False

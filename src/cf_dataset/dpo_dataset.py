@@ -1,16 +1,15 @@
 import argparse
-import ast
 import os
 
 from datasets import Dataset, load_dataset
 from tqdm import tqdm
 
-from cf_dataset.corrupt_code import corrupt_python_code, corrupt_java_code
-from src.cf_dataset.code_string_util import extract_function_body, extract_func_def_and_docstring
+from src.cf_dataset.corrupt_code import corrupt_code
 from src.cf_dataset.compiler import compile_function
 from src.cf_dataset.dataset_constants import LABEL, PREDICTION
+from src.cf_dataset.util import get_whole_prediction_function
 from src.evaluate.sanitize.function_extraction import extract_function_completion
-from util import get_small_dataset
+from src.util import get_small_dataset
 
 """
 This script takes a base dataset and creates a KTO compatible dataset
@@ -22,22 +21,29 @@ python3 dpo_dataset.py \
 
 """
 
-parser = argparse.ArgumentParser(description="Creates a dataset for KTO -> positive/negative examples dataset.")
-parser.add_argument(
-    "--base_dataset_name",
-    type=str,
-    required=True,
-)
-parser.add_argument(
-    "--language",
-    type=str,
-    default="all",
-)
-parser.add_argument(
-    "--corrupt",
-    type=int,
-    default=0,
-)
+def get_args():
+    parser = argparse.ArgumentParser(description="Creates a dataset for KTO -> positive/negative examples dataset.")
+    parser.add_argument(
+        "--base_dataset_name",
+        type=str,
+        required=True,
+    )
+    parser.add_argument(
+        "--language",
+        type=str,
+        default="all",
+    )
+    parser.add_argument(
+        "--not_compile",
+        type=float,
+        default=1.0,
+        help="For DPO this represents the size as percentage of the original dataset. "
+             "If not enough examples produced by the model don't compile, the predictions are corrupted."
+             "If set to 0 it will not corrupt anything"
+        # todo: add better explanation
+    )
+
+    return parser.parse_args()
 
 """
 Note: this will remove all comments inside the function body also
@@ -47,7 +53,8 @@ Note: this will remove all comments inside the function body also
 def create_dpo_dataset(
         dataset: Dataset,
         language: str,
-        prompt_const: str,
+        not_compile: float,
+        prompt_const: str = "prompt",
         target_const: str = LABEL,
         prediction_const: str = PREDICTION
 ) -> Dataset:
@@ -74,24 +81,26 @@ def create_dpo_dataset(
     all_compile = 0
 
     new_dataset = []
-    corrupt = args.corrupt
+
+    corrupt_predictions = []
+    corrupt_count = not_compile * len(dataset)
+
     for datapoint in tqdm(dataset):
-        prediction = datapoint[prediction_const].replace("<｜begin▁of▁sentence｜>", "")
+        prediction = datapoint[prediction_const].replace("<｜begin▁of▁sentence｜>", "") # todo: remove
         prediction = prediction.replace("<｜end▁of▁sentence｜>", "")
 
-        # Note: must use this and not same as below because prediction isn't actually a function, it has a lot more prediction_body
+        # If the model continues generating tokens after completing the function those should be removed
         prediction_body = extract_function_completion(prediction, datapoint[prompt_const])
 
-        if language == "java":
-            prompt = extract_func_def_and_docstring(datapoint, language)[1]
-            prediction_body += "\n}"
-        else:
-            prompt = datapoint[prompt_const]
+        prompt = datapoint[prompt_const]
 
-        whole_func = prompt + "\n" + prediction_body
-        reference_body = extract_function_body(datapoint[target_const], language)
+        whole_prediction_func = get_whole_prediction_function(datapoint, prediction_body)
+        reference_body = datapoint["code_completion"]
 
-        if not compile_function[language](whole_func) and prediction_body != "":
+        # if whole prediction function doesn't compile
+        # we know that whole ref function compiles because it's filtered out at the beginning
+        # todo: that's a mistake it can be used here and in kto dataset
+        if not compile_function[language](whole_prediction_func):
             new_dataset.append(
                 {
                     "prompt": prompt,
@@ -99,28 +108,27 @@ def create_dpo_dataset(
                     "chosen": reference_body,
                 }
             )
+            corrupt_count -= 1
         else:
             all_compile += 1
-            if corrupt > 0:
-                corrupt -= 1
 
-                if datapoint["language"] == "python":
-                    corrput_prediction = corrupt_python_code(prediction_body)
-                else:
-                    corrput_prediction = corrupt_java_code(prediction_body)
+            # todo: maybe concat the solution that compiles as chosen?
 
-                new_dataset.append(
-                    {
-                        "prompt": prompt,
-                        "rejected": prompt + "\n" + corrput_prediction,
-                        "chosen": reference_body,
-                    }
-                )
+            corrupt_predictions.append(
+                {
+                    "prompt": prompt,
+                    "rejected": corrupt_code(prediction_body, datapoint["language"]),
+                    "chosen": reference_body,
+                }
+            )
 
         if prediction_body != "":
             nonempty += 1
+
     print("nonempty: " + str(nonempty))
     print("compile: " + str(all_compile))
+    print("corrupt: " + str(corrupt_count))
+    new_dataset += corrupt_predictions[:corrupt_count]
 
     return Dataset.from_list(new_dataset)
 
@@ -130,20 +138,18 @@ def get_base_dataset(dataset_name: str, language: str, split: str) -> Dataset:
 
 
 if __name__ == "__main__":
-    args = parser.parse_args()
-    for split in ["train", "validation"]:
+    args = get_args()
+    for split in ["train", "validation", "test"]:
         print(split)
+
         base_dataset = get_base_dataset(args.base_dataset_name, args.language, split)
-        base_dataset = get_small_dataset(base_dataset.to_iterable_dataset(), 20000)
-        out_dataset = create_dpo_dataset(base_dataset, args.language, "prepared_prompt").shuffle()
+        # base_dataset = get_small_dataset(base_dataset.to_iterable_dataset(), 10)
+        out_dataset = create_dpo_dataset(base_dataset, args.language, args.not_compile).shuffle()
         print("len: " + str(len(out_dataset)))
-        prefix = ""
 
-        if args.corrupt > 0:
-            prefix = "corrupted"
-
+        prefix = "" if args.corrupt == 0.0 else "corrupted-"
         out_dataset.push_to_hub(
-            f"stojchet/{prefix}-dpo-" + args.base_dataset_name.split("/")[-1],
+            f"stojchet/{prefix}dpo-" + args.base_dataset_name.split("/")[-1],
             token=os.getenv('HF_WRITE_TOKEN'),
             revision="main",
             config_name=args.language,

@@ -5,7 +5,7 @@ export PYTHONPATH=.
 config_path="$1"
 config_name="$2"
 path_to_prompt="$3"
-batch_size="$4"
+batch_size=1
 
 
 echo "TRAINING MODEL"

@@ -1,0 +1,14 @@
+max_seq_length: 1000
+language: python
+dataset_size: 25000
+epochs: 2
+per_device_train_batch_size: 16
+gradient_accumulation_steps: 64
+learning_rate: 1e-6
+no_lora: True
+lora_r: 64
+lora_alpha: 16
+lora_dropout: 0.1
+weight_decay: 0.1
+dataset_name: stojchet/corrupted-dpo-final_base_dataset
+base_model: "deepseek-ai/deepseek-coder-1.3b-base"

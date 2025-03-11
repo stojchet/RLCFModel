@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 import subprocess
 import tempfile
 import os
@@ -6,24 +5,17 @@ import os
 from datasets import load_dataset
 from tqdm import tqdm
 
+from src.cf_dataset.compiler.util import CompilerOutput
+
 
 def compiles(prediction: str) -> bool:
     """
     Returns a boolean indicating whether the code compiled successfully
     """
-    return compile_java_code(prediction).code == 0
+    return __compile_java_code(prediction).code == 0
 
 
-@dataclass
-class CompilerOutput:
-    """
-    Dataclasses used to store compilation code and output
-    """
-    output: str
-    code: int
-
-
-def compile_java_code(java_function, add_in_class: bool = True) -> CompilerOutput:
+def __compile_java_code(java_function, add_in_class: bool = True) -> CompilerOutput:
     """
     This function compiles a given piece of Java code.
 
@@ -36,7 +28,7 @@ def compile_java_code(java_function, add_in_class: bool = True) -> CompilerOutpu
     """
 
     if add_in_class:
-        java_code = add_java_function_in_class(java_function)
+        java_code = __add_java_function_in_class(java_function)
     else:
         java_code = java_function
     try:
@@ -58,7 +50,7 @@ def compile_java_code(java_function, add_in_class: bool = True) -> CompilerOutpu
         os.unlink(temp_file_path)
 
 
-def add_java_function_in_class(java_code: str):
+def __add_java_function_in_class(java_code: str):
     formatted_lines = "\n\t".join(java_code.split('\n'))
     return f"""
 class Main {{
@@ -67,15 +59,15 @@ class Main {{
     """
 
 
-def compile_dataset():
-    dataset = load_dataset("stojchet/6K_java_base", split="train", trust_remote_code=True)
+def print_not_compilable_count(dataset_name: str):
+    dataset = load_dataset(dataset_name, split="train", trust_remote_code=True)
     java_dataset = dataset.filter(lambda x: x["language"] == "java")
     print("dataset loaded !")
     errors = 0
     with tqdm(total=len(java_dataset)) as pbar:
         for datapoint in java_dataset:
             try:
-                compile_java_code(datapoint["func_code_string"])
+                __compile_java_code(datapoint["func_code_string"])
             except:
                 print("error")
                 errors += 1

@@ -1,0 +1,15 @@
+max_seq_length: 0
+language: language
+dataset_size: 0
+epochs: 0
+per_device_train_batch_size: 0
+gradient_accumulation_steps: 0
+learning_rate: 0
+weight_decay: 0
+no_lora: True/False
+lora_r: 0
+lora_alpha: 0
+lora_dropout: 0
+dataset_name: stojchet/somedataset
+base_model: deepseek-ai/deepseek-coder-1.3b-base
+dataset_ref_field: whole_func_string

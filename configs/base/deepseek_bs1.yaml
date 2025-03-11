@@ -1,4 +1,4 @@
-dataset_name: "stojchet/csn_java_python_subset"
+dataset_name: "stojchet/base_prediction_dataset"
 batch_size: 1
 model_name: "deepseek-ai/deepseek-coder-1.3b-base"
 max_new_tokens: 1000

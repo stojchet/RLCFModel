@@ -1,8 +1,7 @@
 transformers @ git+https://github.com/huggingface/transformers
-torch~=2.2.2
+torch~=2.5.0
 evalplus~=0.2.0
 datasets>=2.18.0
-torchvision~=0.17.2
 trl~=0.8.6
 peft~=0.10.0
 python-dotenv~=1.0.1
@@ -24,5 +23,5 @@ numpy~=1.26.4
 PyYAML~=6.0.1
 pandas~=2.2.1
 javalang~=0.13.0
-setuptools~=68.2.0
+setuptools~=70.0.0
 matplotlib~=3.9.0
