@@ -36,7 +36,13 @@ def __compile_kotlin_code(kotlin_function: str, add_in_class: bool = True) -> Co
 
         # Run the Kotlin compiler (kotlinc) on the temporary file
 
-        os.environ["PATH"] += os.pathsep + os.path.expanduser("~") + "/.sdkman/candidates/kotlin/current/bin"
+        kotlin_bin_path = os.path.expanduser("~") + "/.sdkman/candidates/kotlin/current/bin"
+        if kotlin_bin_path not in os.environ["PATH"]:
+            os.environ["PATH"] += os.pathsep + kotlin_bin_path
+
+        if temp_file_path == "" or not temp_file_path:
+            print("File not created")
+            return CompilerOutput("File not created", 1)
 
         result = subprocess.run(['kotlinc', temp_file_path, '-d', 'out.jar'],
                                 capture_output=True, text=True)
@@ -89,4 +95,12 @@ def print_not_compilable_kotlin_count(dataset_name: str):
             pbar.update(1)
 
     print(f"Error count: {errors}")
+
+
+code = """// Function to calculate the factorial of a number
+fun factorial(n: Int): Long {
+    require(n >= 0) { "Factorial is not defined for negative numbers" }
+    return if (n <= 1) 1L else n * factorial(n - 1)
+}"""
+# print(compiles_kotlin(code))
 
