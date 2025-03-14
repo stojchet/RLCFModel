@@ -83,7 +83,7 @@ def create_dpo_dataset(
     new_dataset = []
 
     corrupt_predictions = []
-    corrupt_count = not_compile * len(dataset)
+    corrupt_count = int(not_compile * len(dataset))
 
     for datapoint in tqdm(dataset):
         prediction = datapoint[prediction_const].replace("<｜begin▁of▁sentence｜>", "") # todo: remove
