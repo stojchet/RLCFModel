@@ -147,9 +147,8 @@ if __name__ == "__main__":
         out_dataset = create_dpo_dataset(base_dataset, args.language, args.not_compile).shuffle()
         print("len: " + str(len(out_dataset)))
 
-        prefix = "" if args.corrupt == 0.0 else "corrupted-"
         out_dataset.push_to_hub(
-            f"stojchet/{prefix}dpo-" + args.base_dataset_name.split("/")[-1],
+            f"stojchet/dpo-" + args.base_dataset_name.split("/")[-1],
             token=os.getenv('HF_WRITE_TOKEN'),
             revision="main",
             config_name=args.language,
