@@ -1,4 +1,4 @@
-transformers @ git+https://github.com/huggingface/transformers
+transformers<=4.45
 torch~=2.5.0
 evalplus~=0.2.0
 datasets>=2.18.0
