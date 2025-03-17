@@ -19,6 +19,7 @@ from src.util import PROJECT_DIR
 os.environ["HYDRA_FULL_ERROR"] = "1"
 os.environ["PYTHONBREAKPOINT"] = "0"
 
+# todo: fix dataset name loading
 parser = argparse.ArgumentParser(description="Sanitize and evaluate predictions.")
 parser.add_argument(
     "--config_path",
@@ -85,11 +86,11 @@ def get_dataset(dataset_name: str, name: str):
     dataset = load_dataset("stojchet/" + dataset_name, revision="main", split="train", name=name, trust_remote_code=True)
     sanitized = sanitize_dataset(dataset, "", predictions_field="completion")
 
-    print_number_of_examples_that_compile(sanitized, name)
+    # print_number_of_examples_that_compile(sanitized, name)
 
     ds_name_dir = dataset_name.split("/")[-1] + "-" + name
     dirpath = PROJECT_DIR / "src/evaluate/temp" / ds_name_dir
-    if not dirpath.exists(): os.mkdir(dirpath)
+    if not dirpath.exists(): os.makedirs(dirpath)
     temp_filepath = PROJECT_DIR / f"src/evaluate/temp/{ds_name_dir}/predictions.jsonl"
     with open(temp_filepath, "w") as temp_file:
         for datapoint in sanitized:
@@ -158,9 +159,14 @@ def main(cfg: DictConfig):
     if args.language == "python":
         mbxp_data = PROJECT_DIR / 'external/mxeval/data/mbxp/mbpp_release_v1.jsonl'
         humaneval_data = PROJECT_DIR / "external/mxeval/data/multilingual_humaneval/HumanEval.jsonl"
-    else:
+    elif args.language == "java":
         mbxp_data = PROJECT_DIR / 'external/mxeval/data/mbxp/mbjp_release_v1.2.jsonl'
         humaneval_data = PROJECT_DIR / "external/mxeval/data/multilingual_humaneval/HumanEval_java_v1.1.jsonl"
+    elif args.language == "kotlin":
+        mbxp_data = PROJECT_DIR / 'external/mxeval/data/mbxp/mbkp_release_v1.2.jsonl'
+        humaneval_data = PROJECT_DIR / "external/mxeval/data/multilingual_humaneval/HumanEval_kotlin_v1.1.jsonl"
+    else:
+        raise ValueError("Language not supported")
 
     command = [PROJECT_DIR / 'external/mxeval/mxeval/evaluate_functional_correctness.py', mbxp_temp,
                '--problem_file', mbxp_data]
